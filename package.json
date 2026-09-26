@@ -1,0 +1,15 @@
+{
+  "name": "cat-ai-notes-workspace",
+  "private": true,
+  "workspaces": ["frontend"],
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "api": "cd backend && uv run uvicorn app.main:app --reload --port 8000",
+    "api:test": "cd backend && uv run pytest",
+    "api:migrate": "cd backend && uv run alembic upgrade head",
+    "up": "docker compose up --build",
+    "down": "docker compose down"
+  }
+}
