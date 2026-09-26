@@ -40,6 +40,8 @@ class StudioPostCreate(ApiModel):
     locale: str = Field(default="zh-CN", pattern="^(zh-CN|en-US)$")
     cover_url: str | None = Field(default=None, max_length=2048)
     content_format: Literal["markdown", "html"] = "markdown"
+    category_ids: list[UUID] = Field(default_factory=list, max_length=16)
+    tag_ids: list[UUID] = Field(default_factory=list, max_length=48)
 
 
 class StudioPostUpdate(ApiModel):
@@ -54,6 +56,8 @@ class StudioPostUpdate(ApiModel):
     status: Literal["draft", "published", "archived"] | None = None
     visibility: Literal["public", "unlisted", "private"] | None = None
     content_format: Literal["markdown", "html"] | None = None
+    category_ids: list[UUID] | None = Field(default=None, max_length=16)
+    tag_ids: list[UUID] | None = Field(default=None, max_length=48)
 
 
 class StudioTaxonomyInput(ApiModel):

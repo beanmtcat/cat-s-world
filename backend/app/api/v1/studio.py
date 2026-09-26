@@ -5,7 +5,7 @@ from math import ceil
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +23,7 @@ from app.models.core import (
     User,
     UserSession,
 )
-from app.models.supplemental import AITool, OutboxEvent
+from app.models.supplemental import AITool, OutboxEvent, PostCategory, PostTag
 from app.schemas.content import (
     PostSummary,
     StudioCommentModeration,
@@ -41,6 +41,86 @@ router = APIRouter(prefix="/studio", tags=["studio"])
 
 def _payload(post: Post) -> dict[str, object]:
     return PostSummary.model_validate(post).model_dump(mode="json", by_alias=True)
+
+
+async def _post_taxonomy_ids(session: AsyncSession, post_id: UUID) -> tuple[list[str], list[str]]:
+    """Return active logical taxonomy relations; the database intentionally has no FK constraints."""
+    category_ids = list(
+        await session.scalars(
+            select(PostCategory.category_id).where(
+                PostCategory.post_id == post_id, PostCategory.isvalid.is_(True)
+            )
+        )
+    )
+    tag_ids = list(
+        await session.scalars(
+            select(PostTag.tag_id).where(PostTag.post_id == post_id, PostTag.isvalid.is_(True))
+        )
+    )
+    return [str(item) for item in category_ids], [str(item) for item in tag_ids]
+
+
+async def _set_post_taxonomies(
+    session: AsyncSession,
+    post: Post,
+    category_ids: list[UUID],
+    tag_ids: list[UUID],
+) -> None:
+    """Validate and replace active category/tag links for one article."""
+    category_ids = list(dict.fromkeys(category_ids))
+    tag_ids = list(dict.fromkeys(tag_ids))
+    active_categories = set(
+        await session.scalars(
+            select(Category.id).where(
+                Category.id.in_(category_ids),
+                Category.locale == post.locale,
+                Category.isvalid.is_(True),
+            )
+        )
+    ) if category_ids else set()
+    active_tags = set(
+        await session.scalars(
+            select(Tag.id).where(
+                Tag.id.in_(tag_ids),
+                Tag.locale == post.locale,
+                Tag.isvalid.is_(True),
+            )
+        )
+    ) if tag_ids else set()
+    if len(active_categories) != len(category_ids) or len(active_tags) != len(tag_ids):
+        raise AppError("POST_TAXONOMY_INVALID", "分类或标签不存在、已失效，或与文章语言不一致。", 422)
+    existing_category_ids = set(
+        await session.scalars(select(PostCategory.category_id).where(PostCategory.post_id == post.id))
+    )
+    existing_tag_ids = set(
+        await session.scalars(select(PostTag.tag_id).where(PostTag.post_id == post.id))
+    )
+    await session.execute(
+        update(PostCategory)
+        .where(PostCategory.post_id == post.id, PostCategory.isvalid.is_(True))
+        .values(isvalid=False)
+    )
+    await session.execute(
+        update(PostTag)
+        .where(PostTag.post_id == post.id, PostTag.isvalid.is_(True))
+        .values(isvalid=False)
+    )
+    if category_ids:
+        await session.execute(
+            update(PostCategory)
+            .where(PostCategory.post_id == post.id, PostCategory.category_id.in_(category_ids))
+            .values(isvalid=True)
+        )
+    if tag_ids:
+        await session.execute(
+            update(PostTag)
+            .where(PostTag.post_id == post.id, PostTag.tag_id.in_(tag_ids))
+            .values(isvalid=True)
+        )
+    session.add_all(
+        [PostCategory(post_id=post.id, category_id=item) for item in category_ids if item not in existing_category_ids]
+        + [PostTag(post_id=post.id, tag_id=item) for item in tag_ids if item not in existing_tag_ids]
+    )
 
 
 def _entity_payload(item: object, fields: tuple[str, ...]) -> dict[str, object]:
@@ -105,6 +185,7 @@ async def create_draft(
     )
     session.add(post)
     await session.flush()
+    await _set_post_taxonomies(session, post, body.category_ids, body.tag_ids)
     session.add(
         ContentRevision(
             target_type="post",
@@ -157,6 +238,7 @@ async def get_studio_post(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
     post = await _editable_post(session, post_id, identity[0])
+    category_ids, tag_ids = await _post_taxonomy_ids(session, post.id)
     return {
         "data": {
             **_payload(post),
@@ -165,6 +247,8 @@ async def get_studio_post(
             "visibility": post.visibility,
             "coverUrl": post.cover_url,
             "contentFormat": post.content_format,
+            "categoryIds": category_ids,
+            "tagIds": tag_ids,
         },
         "meta": {"requestId": str(request_id(request))},
     }
@@ -203,6 +287,14 @@ async def update_studio_post(
         elif post.status == "draft":
             post.visibility = "private" if "visibility" not in changes else post.visibility
             post.published_at = None
+    if "category_ids" in changes or "tag_ids" in changes or "locale" in changes:
+        current_category_ids, current_tag_ids = await _post_taxonomy_ids(session, post.id)
+        await _set_post_taxonomies(
+            session,
+            post,
+            changes.get("category_ids", [UUID(item) for item in current_category_ids]),
+            changes.get("tag_ids", [UUID(item) for item in current_tag_ids]),
+        )
     await session.flush()
     last_revision = await session.scalar(
         select(ContentRevision.revision_no)
@@ -326,7 +418,7 @@ async def _taxonomy_update(
 
 
 @router.get("/categories")
-async def list_categories(request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+async def list_categories(request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor", "author")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     return {"data": await _taxonomy_list(session, Category), "meta": {"requestId": str(request_id(request))}}
 
 
@@ -353,7 +445,7 @@ async def delete_category(item_id: UUID, _: tuple[User, UserSession] = Depends(r
 
 
 @router.get("/tags")
-async def list_tags(request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+async def list_tags(request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor", "author")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     return {"data": await _taxonomy_list(session, Tag), "meta": {"requestId": str(request_id(request))}}
 
 
