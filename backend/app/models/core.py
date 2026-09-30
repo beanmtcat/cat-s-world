@@ -36,6 +36,9 @@ class User(IdTimestampValidityMixin, Base):
     )
     password_hash: Mapped[str] = mapped_column(String(512), comment="Argon2id 密码哈希。")
     display_name: Mapped[str] = mapped_column(String(120), comment="公开展示名称。")
+    avatar_media_id: Mapped[UUID | None] = mapped_column(
+        index=True, comment="逻辑关联附件表的头像媒体 ID。"
+    )
     role: Mapped[str] = mapped_column(String(20), default="member", server_default="member")
     status: Mapped[str] = mapped_column(
         String(30), default="pending_verification", server_default="pending_verification"

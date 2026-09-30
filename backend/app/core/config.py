@@ -28,7 +28,9 @@ class Settings(BaseSettings):
     # is set.  Local Vite/FastAPI development is HTTP, so it needs a distinct
     # non-prefixed name; production is validated below and must use __Host-.
     session_cookie_name: str = "mmcat-session"
-    csrf_cookie_name: str = "mmcat-csrf"
+    # The browser client deliberately reads this non-HttpOnly cookie.  Keeping
+    # its name fixed prevents a deployment-only mismatch with the SPA.
+    csrf_cookie_name: Literal["mmcat-csrf"] = "mmcat-csrf"
     session_secret: SecretStr
     hash_ip_secret: SecretStr
     s3_endpoint: AnyHttpUrl
@@ -39,6 +41,8 @@ class Settings(BaseSettings):
     s3_public_base_url: AnyHttpUrl
     s3_quarantine_prefix: str = "quarantine"
     s3_public_prefix: str = "public"
+    antivirus_host: str | None = None
+    antivirus_port: int = 3310
     smtp_host: str
     smtp_port: int = 587
     smtp_username: SecretStr
@@ -63,6 +67,8 @@ class Settings(BaseSettings):
             raise ValueError("HASH_IP_SECRET must be at least 32 bytes in production")
         if not self.trusted_hosts or not self.cors_origins:
             raise ValueError("TRUSTED_HOSTS and CORS_ORIGINS are required in production")
+        if not self.antivirus_host:
+            raise ValueError("ANTIVIRUS_HOST is required in production")
         if not self.session_cookie_name.startswith("__Host-"):
             raise ValueError("SESSION_COOKIE_NAME must use the __Host- prefix in production")
 

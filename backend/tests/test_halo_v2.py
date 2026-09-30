@@ -92,6 +92,13 @@ def test_reads_workdir_resources_without_media_bytes(tmp_path) -> None:
             {"metadata": {"name": "tag-1"}, "spec": {"displayName": "标签", "slug": "tag"}},
         ),
         record(
+            "/registry/storage.halo.run/groups/group-photos",
+            {
+                "metadata": {"name": "group-photos"},
+                "spec": {"displayName": "照片", "description": "站点图片素材"},
+            },
+        ),
+        record(
             "/registry/storage.halo.run/attachments/image-1",
             {
                 "metadata": {"name": "image-1"},
@@ -99,7 +106,7 @@ def test_reads_workdir_resources_without_media_bytes(tmp_path) -> None:
                     "displayName": "cat.png",
                     "mediaType": "image/png",
                     "size": 5,
-                    "groupName": "照片",
+                    "groupName": "group-photos",
                 },
                 "status": {"permalink": "https://old.example/upload/cat.png"},
             },
@@ -160,5 +167,6 @@ def test_reads_workdir_resources_without_media_bytes(tmp_path) -> None:
 
     assert {item.kind for item in bundle.candidates} == {"post", "page"}
     assert bundle.taxonomy["category"]["category-1"]["displayName"] == "分类"
+    assert bundle.attachment_groups["group-photos"]["spec"]["displayName"] == "照片"
     assert len(bundle.attachments) == len(bundle.comments) == len(bundle.menu_items) == 1
     assert len(bundle.friend_links) == len(bundle.site_settings) == len(bundle.statistics) == 1

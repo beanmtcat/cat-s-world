@@ -13,9 +13,18 @@ from app.api.deps import request_id, require_csrf
 from app.core.errors import AppError
 from app.db.session import get_session
 from app.models.core import Category, Comment, Page, Post, SiteProperties, Tag, User, UserSession
-from app.models.supplemental import AITool, PostCategory, PostTag, StatusNode
+from app.models.supplemental import (
+    AITool,
+    NavigationItem,
+    PostCategory,
+    PostTag,
+    StatusNode,
+    VisitDaily,
+)
 from app.schemas.content import CommentCreate, CommentPublic, PostDetail, PostSummary, SitePublic
+from app.services.analytics import record_post_view
 from app.services.content import PostService
+from app.services.rate_limit import enforce_rate_limit
 from app.services.redirects import resolve_redirect
 
 router = APIRouter(tags=["public"])
@@ -40,6 +49,104 @@ def _post_summary(post: Post) -> dict[str, object]:
     return payload
 
 
+async def _post_card_payload(session: AsyncSession, post: Post) -> dict[str, object]:
+    """Attach the taxonomy and counters displayed by public article cards."""
+    payload = _post_summary(post)
+    categories = list(
+        await session.scalars(
+            select(Category.name)
+            .join(PostCategory, PostCategory.category_id == Category.id)
+            .where(PostCategory.post_id == post.id, PostCategory.isvalid.is_(True), Category.isvalid.is_(True))
+            .order_by(Category.sort_order, Category.name)
+        )
+    )
+    tags = list(
+        await session.scalars(
+            select(Tag.name)
+            .join(PostTag, PostTag.tag_id == Tag.id)
+            .where(PostTag.post_id == post.id, PostTag.isvalid.is_(True), Tag.isvalid.is_(True))
+            .order_by(Tag.name)
+        )
+    )
+    comment_count = await session.scalar(
+        select(func.count()).select_from(Comment).where(
+            Comment.post_id == post.id, Comment.isvalid.is_(True), Comment.status == "approved"
+        )
+    )
+    view_count = await session.scalar(
+        select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
+            VisitDaily.path.in_((f"/archives/{post.slug}", f"/posts/{post.slug}")),
+            VisitDaily.locale == post.locale,
+            VisitDaily.isvalid.is_(True),
+        )
+    )
+    payload.update(
+        {
+            "categories": categories,
+            "tags": tags,
+            "commentCount": int(comment_count or 0),
+            "viewCount": int(view_count or 0),
+        }
+    )
+    return payload
+
+
+async def _post_card_payloads(session: AsyncSession, posts: list[Post]) -> list[dict[str, object]]:
+    """Batch-load card decorations, avoiding four queries for every post."""
+    if not posts:
+        return []
+    post_ids = [post.id for post in posts]
+    categories: dict[UUID, list[str]] = {post_id: [] for post_id in post_ids}
+    tags: dict[UUID, list[str]] = {post_id: [] for post_id in post_ids}
+    comments: dict[UUID, int] = {post_id: 0 for post_id in post_ids}
+    views: dict[tuple[str, str], int] = {}
+    category_rows = await session.execute(
+        select(PostCategory.post_id, Category.name)
+        .join(Category, Category.id == PostCategory.category_id)
+        .where(PostCategory.post_id.in_(post_ids), PostCategory.isvalid.is_(True), Category.isvalid.is_(True))
+        .order_by(PostCategory.post_id, Category.sort_order, Category.name)
+    )
+    for post_id, name in category_rows:
+        categories[post_id].append(name)
+    tag_rows = await session.execute(
+        select(PostTag.post_id, Tag.name)
+        .join(Tag, Tag.id == PostTag.tag_id)
+        .where(PostTag.post_id.in_(post_ids), PostTag.isvalid.is_(True), Tag.isvalid.is_(True))
+        .order_by(PostTag.post_id, Tag.name)
+    )
+    for post_id, name in tag_rows:
+        tags[post_id].append(name)
+    comment_rows = await session.execute(
+        select(Comment.post_id, func.count()).where(
+            Comment.post_id.in_(post_ids), Comment.isvalid.is_(True), Comment.status == "approved"
+        ).group_by(Comment.post_id)
+    )
+    for post_id, count in comment_rows:
+        comments[post_id] = int(count)
+    paths = [path for post in posts for path in (f"/archives/{post.slug}", f"/posts/{post.slug}")]
+    view_rows = await session.execute(
+        select(VisitDaily.path, VisitDaily.locale, func.sum(VisitDaily.page_views)).where(
+            VisitDaily.path.in_(paths), VisitDaily.isvalid.is_(True)
+        ).group_by(VisitDaily.path, VisitDaily.locale)
+    )
+    for path, locale, count in view_rows:
+        views[(path, locale)] = int(count or 0)
+    result = []
+    for post in posts:
+        payload = _post_summary(post)
+        payload.update(
+            {
+                "categories": categories[post.id],
+                "tags": tags[post.id],
+                "commentCount": comments[post.id],
+                "viewCount": views.get((f"/archives/{post.slug}", post.locale), 0)
+                + views.get((f"/posts/{post.slug}", post.locale), 0),
+            }
+        )
+        result.append(payload)
+    return result
+
+
 @router.get("/health/live")
 async def health_live(request: Request) -> dict[str, object]:
     return {"data": {"status": "ok"}, "meta": _meta(request)}
@@ -59,13 +166,14 @@ async def list_posts(
     locale: str = Query("zh-CN", pattern="^(zh-CN|en-US)$"),
     q: str | None = Query(None, max_length=120),
     category: str | None = Query(None, max_length=120),
-    page: int = Query(1, ge=1),
+    tag: str | None = Query(None, max_length=120),
+    page: int = Query(1, ge=1, le=10_000),
     page_size: int = Query(12, alias="pageSize", ge=1, le=100),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
-    rows, total = await PostService.list_public(session, locale, page, page_size, q, category)
+    rows, total = await PostService.list_public(session, locale, page, page_size, q, category, tag)
     return {
-        "data": [_post_summary(row) for row in rows],
+        "data": await _post_card_payloads(session, rows),
         "meta": {
             **_meta(request),
             "page": page,
@@ -117,13 +225,18 @@ async def get_home(
     return {
         "data": {
             "postCount": total,
-            "posts": [_post_summary(post) for post in posts],
+            "posts": await _post_card_payloads(session, posts),
             "categories": [
                 {"id": str(item.id), "name": item.name, "slug": item.slug, "postCount": count}
                 for item, count in category_rows
             ],
             "tags": [
-                {"id": str(item.id), "name": item.name, "postCount": count}
+                {
+                    "id": str(item.id),
+                    "name": item.name,
+                    "slug": item.slug,
+                    "postCount": count,
+                }
                 for item, count in tag_rows
             ],
             "tools": [
@@ -152,6 +265,39 @@ async def get_home(
     }
 
 
+@router.get("/navigation")
+async def get_navigation(
+    request: Request,
+    locale: str = Query("zh-CN", pattern="^(zh-CN|en-US)$"),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    rows = await session.scalars(
+        select(NavigationItem)
+        .where(
+            NavigationItem.isvalid.is_(True),
+            NavigationItem.locale == locale,
+        )
+        .order_by(NavigationItem.location, NavigationItem.sort_order, NavigationItem.ctime, NavigationItem.id)
+    )
+    return {
+        "data": [
+            {
+                "id": str(item.id),
+                "menuId": str(item.menu_id) if item.menu_id else None,
+                "location": item.location,
+                "label": item.label,
+                "url": item.url,
+                "parentId": str(item.parent_id) if item.parent_id else None,
+                "iconKey": item.icon_key,
+                "sortOrder": item.sort_order,
+                "openNewTab": item.open_new_tab,
+            }
+            for item in rows
+        ],
+        "meta": _meta(request),
+    }
+
+
 @router.get("/posts/{slug}")
 async def get_post(
     slug: str,
@@ -161,6 +307,60 @@ async def get_post(
 ) -> dict[str, object]:
     post = await PostService.get_public(session, locale, slug)
     payload = PostDetail.model_validate(post).model_dump(mode="json", by_alias=True)
+    categories = [
+        {"name": name, "slug": category_slug}
+        for name, category_slug in (
+            await session.execute(
+                select(Category.name, Category.slug)
+                .join(PostCategory, PostCategory.category_id == Category.id)
+                .where(
+                    PostCategory.post_id == post.id,
+                    PostCategory.isvalid.is_(True),
+                    Category.isvalid.is_(True),
+                )
+                .order_by(Category.sort_order, Category.name)
+            )
+        ).all()
+    ]
+    tags = [
+        {"name": name, "slug": tag_slug}
+        for name, tag_slug in (
+            await session.execute(
+                select(Tag.name, Tag.slug)
+                .join(PostTag, PostTag.tag_id == Tag.id)
+                .where(
+                    PostTag.post_id == post.id,
+                    PostTag.isvalid.is_(True),
+                    Tag.isvalid.is_(True),
+                )
+                .order_by(Tag.name)
+            )
+        ).all()
+    ]
+    payload["categories"] = categories
+    payload["tags"] = tags
+    payload["commentCount"] = int(
+        await session.scalar(
+            select(func.count()).select_from(Comment).where(
+                Comment.post_id == post.id,
+                Comment.isvalid.is_(True),
+                Comment.status == "approved",
+            )
+        )
+        or 0
+    )
+    view_count = await record_post_view(session, request, slug=post.slug, locale=post.locale)
+    if view_count is not None:
+        payload["viewCount"] = view_count
+        await session.commit()
+    else:
+        payload["viewCount"] = await session.scalar(
+            select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
+                VisitDaily.path.in_((f"/archives/{post.slug}", f"/posts/{post.slug}")),
+                VisitDaily.locale == post.locale,
+                VisitDaily.isvalid.is_(True),
+            )
+        ) or 0
     return {"data": payload, "meta": _meta(request)}
 
 
@@ -256,7 +456,7 @@ async def list_comments(
     request: Request,
     post_id: UUID | None = Query(None, alias="postId"),
     page_id: UUID | None = Query(None, alias="pageId"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10_000),
     page_size: int = Query(20, alias="pageSize", ge=1, le=100),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
@@ -305,7 +505,14 @@ async def create_comment(
     identity: tuple[User, UserSession] = Depends(require_csrf),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
+    client_ip = request.client.host if request.client else "unknown"
+    await enforce_rate_limit("comment:ip", client_ip, limit=12, window_seconds=3600)
     user, _ = identity
+    comments_enabled = await session.scalar(
+        select(SiteProperties.comments_enabled).where(SiteProperties.isvalid.is_(True))
+    )
+    if comments_enabled is not True:
+        raise AppError("COMMENTS_DISABLED", "站点当前未开放评论。", 403)
     if user.status != "active" or user.email_verified_at is None:
         raise AppError("COMMENT_LOGIN_REQUIRED", "请验证邮箱后再发表评论。", 401)
     target_model = Post if body.target_type == "post" else Page
@@ -319,7 +526,7 @@ async def create_comment(
         raise AppError("COMMENT_TARGET_NOT_FOUND", "评论目标不存在。", 404)
     if body.parent_id is not None:
         parent = await session.get(Comment, body.parent_id)
-        if parent is None:
+        if parent is None or not parent.isvalid:
             raise AppError("COMMENT_PARENT_INVALID", "回复目标无效。", 422)
         parent_target_id = parent.post_id if body.target_type == "post" else parent.page_id
         if parent_target_id != body.target_id:

@@ -56,6 +56,7 @@ class HaloWorkdirBundle:
         default_factory=lambda: {"category": {}, "tag": {}}
     )
     attachments: list[dict[str, object]] = field(default_factory=list)
+    attachment_groups: dict[str, dict[str, object]] = field(default_factory=dict)
     comments: list[dict[str, object]] = field(default_factory=list)
     menu_items: list[dict[str, object]] = field(default_factory=list)
     friend_links: list[dict[str, object]] = field(default_factory=list)
@@ -103,6 +104,19 @@ def _slug(value: str) -> str:
     return candidate
 
 
+def _halo_excerpt(spec: dict[str, object], status: dict[str, object]) -> str | None:
+    """Read Halo's article summary across export formats.
+
+    Official v2 resources put it in ``spec.excerpt.raw`` while some older
+    exports flatten it into ``status.excerpt``.  Accept both without turning
+    an absent excerpt into the string ``"None"``.
+    """
+    excerpt = spec.get("excerpt", status.get("excerpt"))
+    value = excerpt.get("raw") or excerpt.get("content") if isinstance(excerpt, dict) else excerpt
+    text = str(value or "").strip()
+    return text or None
+
+
 def _safe_halo_slug(value: str, source_id: str) -> tuple[str, tuple[str, ...]]:
     """Keep valid legacy slugs; give incompatible ones a stable new address."""
     try:
@@ -122,6 +136,25 @@ def _halo_datetime(value: object) -> datetime | None:
         return None
 
 
+def _table_html_to_markdown(match: re.Match[str]) -> str:
+    """Preserve Halo editor tables before generic HTML stripping runs."""
+    rows: list[tuple[list[str], bool]] = []
+    for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", match.group(1), flags=re.IGNORECASE | re.DOTALL):
+        cells = re.findall(r"<(th|td)\b[^>]*>(.*?)</\1>", row, flags=re.IGNORECASE | re.DOTALL)
+        values = [unescape(re.sub(r"<[^>]+>", "", value)).strip() for _, value in cells]
+        if values:
+            rows.append((values, any(kind.lower() == "th" for kind, _ in cells)))
+    if not rows:
+        return ""
+    width = max(len(values) for values, _ in rows)
+    normalized = [[value.replace("|", "\\|") for value in values] + [""] * (width - len(values)) for values, _ in rows]
+    header_index = next((index for index, (_, is_header) in enumerate(rows) if is_header), 0)
+    header = normalized.pop(header_index)
+    return "\n\n| " + " | ".join(header) + " |\n| " + " | ".join(["---"] * width) + " |\n" + "\n".join(
+        "| " + " | ".join(row) + " |" for row in normalized
+    ) + "\n\n"
+
+
 def _html_to_markdown(raw: str) -> str:
     """Convert the safe subset of Halo's rich-text HTML into portable Markdown.
 
@@ -130,6 +163,7 @@ def _html_to_markdown(raw: str) -> str:
     system never needs to execute or inject the legacy HTML in the browser.
     """
     value = raw.replace("\r\n", "\n")
+    value = re.sub(r"<table\b[^>]*>(.*?)</table>", _table_html_to_markdown, value, flags=re.IGNORECASE | re.DOTALL)
     value = re.sub(r"<\s*br\s*/?\s*>", "\n", value, flags=re.IGNORECASE)
     value = re.sub(
         r'<img\b[^>]*\bsrc=["\']([^"\']+)["\'][^>]*>',
@@ -284,7 +318,7 @@ def _read_halo_v2_archive(archive: zipfile.ZipFile, archive_size: int) -> list[H
                     tag_source_ids=tuple(str(value) for value in spec.get("tags", []) if value),
                     is_published=bool(spec.get("publish", False)),
                     published_at=_halo_datetime(status.get("publishTime")),
-                    summary=str(status.get("excerpt") or "") or None,
+                    summary=_halo_excerpt(spec, status),
                 )
             )
     if not candidates:
@@ -416,7 +450,6 @@ def _workdir_candidate(
     if not title or not slug or not source_id or not isinstance(raw, str) or not raw.strip():
         return None
     resolved_slug, warnings = _safe_halo_slug(slug, source_id)
-    excerpt = spec.get("excerpt")
     raw_type = snapshots.get(snapshot_id, {}).get("spec", {}).get("rawType")
     content = _html_to_markdown(raw) if raw_type == "HTML" and not raw.lstrip().startswith("[") else raw
     if not content:
@@ -433,7 +466,7 @@ def _workdir_candidate(
         tag_source_ids=tuple(str(value) for value in spec.get("tags", []) if value),
         is_published=bool(spec.get("publish", False)),
         published_at=_halo_datetime(spec.get("publishTime")),
-        summary=str(excerpt.get("raw") or "") if isinstance(excerpt, dict) else None,
+        summary=_halo_excerpt(spec, status),
         warnings=warnings,
     )
 
@@ -463,6 +496,9 @@ def read_halo_workdir_bundle_path(path: str) -> HaloWorkdirBundle:
                 if name.startswith("/registry/content.halo.run/categories/")
                 else "tag"
                 if name.startswith("/registry/content.halo.run/tags/")
+                else "attachment_group"
+                if "/registry/storage.halo.run/groups/" in lowered
+                or "/attachmentgroups/" in lowered
                 else "attachment"
                 if "/attachments/" in lowered
                 else "comment"
@@ -494,6 +530,8 @@ def read_halo_workdir_bundle_path(path: str) -> HaloWorkdirBundle:
                 bundle.taxonomy["tag"][str(resource["source_id"])] = resource["spec"]
             elif resource_type == "attachment":
                 bundle.attachments.append(resource)
+            elif resource_type == "attachment_group":
+                bundle.attachment_groups[str(resource["source_id"])] = resource
             elif resource_type == "comment":
                 bundle.comments.append(resource)
             elif resource_type == "menu":

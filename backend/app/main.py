@@ -66,8 +66,8 @@ app.add_middleware(
     allow_origins=[str(item).rstrip("/") for item in settings.cors_origins],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
-    allow_headers=["Content-Type", "X-CSRF-Token", "X-Request-ID", "If-Match", "Idempotency-Key"],
-    expose_headers=["X-Request-ID", "ETag"],
+    allow_headers=["Content-Type", "X-CSRF-Token", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],
 )
 if settings.trusted_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts)
@@ -81,6 +81,11 @@ async def request_context(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; "
+        "frame-ancestors 'none'; form-action 'self'; img-src 'self' https: data:; "
+        "media-src 'self' https:; style-src 'self' 'unsafe-inline'; connect-src 'self' https:"
+    )
     return response
 
 

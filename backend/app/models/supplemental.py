@@ -108,6 +108,15 @@ class NavigationItem(IdTimestampValidityMixin, Base):
     location: Mapped[str] = mapped_column(String(20), default="header", server_default="header")
     label: Mapped[str] = mapped_column(String(80))
     url: Mapped[str] = mapped_column(Text)
+    menu_id: Mapped[UUID | None] = mapped_column(
+        index=True, comment="逻辑关联菜单组 ID。"
+    )
+    target_type: Mapped[str] = mapped_column(
+        String(20), default="custom", server_default="custom", comment="custom、post、page、categories 或 tags。"
+    )
+    target_ids: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, server_default="[]", comment="目标内容逻辑 ID 列表；分类和标签可选择多个。"
+    )
     icon_key: Mapped[str | None] = mapped_column(String(120))
     parent_id: Mapped[UUID | None] = mapped_column(index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
@@ -115,6 +124,17 @@ class NavigationItem(IdTimestampValidityMixin, Base):
     source_platform: Mapped[str | None] = mapped_column(String(30))
     source_id: Mapped[str | None] = mapped_column(String(240), index=True)
 
+
+class NavigationMenu(IdTimestampValidityMixin, Base):
+    """A named menu collection; item relations remain logical IDs, not FKs."""
+
+    __tablename__ = "mmcat_navigation_menus"
+    __table_args__ = (UniqueConstraint("locale", "menu_key"),)
+    locale: Mapped[str] = mapped_column(String(10), default="zh-CN", server_default="zh-CN")
+    menu_key: Mapped[str] = mapped_column(String(80), comment="菜单机器名，同语言内唯一。")
+    name: Mapped[str] = mapped_column(String(120), comment="后台展示的菜单名称。")
+    location: Mapped[str] = mapped_column(String(20), default="header", server_default="header")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 class PostCategory(Base):
     __tablename__ = "mmcat_post_categories"
@@ -263,6 +283,9 @@ class GalleryItem(IdTimestampValidityMixin, Base):
 
 class VisitEvent(IdTimestampValidityMixin, Base):
     __tablename__ = "mmcat_visit_events"
+    ip_address: Mapped[str | None] = mapped_column(
+        String(64), comment="访问客户端 IP；仅用于站点自有访问统计与安全分析。"
+    )
     visitor_hash: Mapped[str] = mapped_column(String(64), index=True)
     session_hash: Mapped[str] = mapped_column(String(64), index=True)
     path: Mapped[str] = mapped_column(Text, index=True)

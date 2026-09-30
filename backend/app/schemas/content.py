@@ -94,6 +94,81 @@ class StudioToolInput(ApiModel):
     is_featured: bool = True
 
 
+class StudioNavigationInput(ApiModel):
+    menu_id: UUID | None = None
+    locale: Literal["zh-CN", "en-US"] = "zh-CN"
+    location: Literal["header", "footer"] = "header"
+    label: str = Field(min_length=1, max_length=80)
+    url: str | None = Field(default=None, max_length=2048)
+    target_type: Literal["custom", "post", "page", "categories", "tags"] = "custom"
+    target_ids: list[UUID] = Field(default_factory=list, max_length=100)
+    icon_key: str | None = Field(default=None, max_length=120)
+    parent_id: UUID | None = None
+    sort_order: int = Field(default=0, ge=0, le=100000)
+    open_new_tab: bool = False
+
+
+class StudioNavigationMenuInput(ApiModel):
+    locale: Literal["zh-CN", "en-US"] = "zh-CN"
+    menu_key: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    name: str = Field(min_length=1, max_length=120)
+    location: Literal["header", "footer"] = "header"
+    sort_order: int = Field(default=0, ge=0, le=100000)
+
+
+class StudioStatusNodeInput(ApiModel):
+    code: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    display_name_zh: str = Field(min_length=1, max_length=120)
+    display_name_en: str | None = Field(default=None, max_length=120)
+    region: str | None = Field(default=None, max_length=80)
+    endpoint: str = Field(min_length=1, max_length=2048)
+    check_type: Literal["http", "tcp"] = "http"
+    http_method: Literal["HEAD", "GET"] = "HEAD"
+    expected_status: int = Field(default=200, ge=100, le=599)
+    timeout_ms: int = Field(default=5000, ge=100, le=60000)
+    interval_seconds: int = Field(default=60, ge=15, le=86400)
+    sort_order: int = Field(default=0, ge=0, le=100000)
+
+
+class StudioFriendLinkInput(ApiModel):
+    locale: Literal["zh-CN", "en-US"] = "zh-CN"
+    name: str = Field(min_length=1, max_length=120)
+    url: str = Field(min_length=1, max_length=2048)
+    logo_url: str | None = Field(default=None, max_length=2048)
+    description: str | None = Field(default=None, max_length=500)
+    rel: str = Field(default="noopener noreferrer", max_length=80)
+    target: Literal["_self", "_blank"] = "_blank"
+    sort_order: int = Field(default=0, ge=0, le=100000)
+
+
+class StudioGalleryInput(ApiModel):
+    locale: Literal["zh-CN", "en-US"] = "zh-CN"
+    slug: str = Field(min_length=1, max_length=180, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    name: str = Field(min_length=1, max_length=240)
+    description: str | None = Field(default=None, max_length=4000)
+    cover_url: str | None = Field(default=None, max_length=2048)
+    status: Literal["draft", "published", "archived"] = "draft"
+    visibility: Literal["public", "unlisted", "private"] = "public"
+    sort_order: int = Field(default=0, ge=0, le=100000)
+    media_ids: list[UUID] = Field(default_factory=list, max_length=200)
+
+
+class StudioUserUpdate(ApiModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=120)
+    role: Literal["member", "author", "editor", "admin"] | None = None
+    status: Literal["pending_verification", "active", "disabled"] | None = None
+    avatar_media_id: UUID | None = None
+
+
+class StudioMediaUpdate(ApiModel):
+    original_name: str | None = Field(default=None, max_length=1000)
+    post_id: UUID | None = None
+
+
+class StudioCommentReply(ApiModel):
+    content: str = Field(min_length=1, max_length=5000)
+
+
 class StudioSitePropertiesUpdate(ApiModel):
     site_name_zh: str | None = Field(default=None, max_length=160)
     site_name_en: str | None = Field(default=None, max_length=160)

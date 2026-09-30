@@ -53,6 +53,16 @@ def _arguments() -> argparse.Namespace:
         "--update-existing", action="store_true", help="同 source_id 存在时更新文章"
     )
     parser.add_argument(
+        "--import-taxonomy",
+        action="store_true",
+        help="显式导入并更新分类、标签及文章归属；默认保留站内现有分类标签数据",
+    )
+    parser.add_argument(
+        "--import-navigation",
+        action="store_true",
+        help="显式导入导航菜单；默认保留站内现有菜单数据",
+    )
+    parser.add_argument(
         "--reset-database", action="store_true", help="导入前清空当前数据库的 public 表数据"
     )
     parser.add_argument(
@@ -169,6 +179,7 @@ async def _write_candidate(
     locale: str,
     update_existing: bool,
     taxonomy: dict[str, dict[str, dict[str, object]]],
+    write_taxonomy: bool,
 ) -> bool:
     item = ImportItem(
         job_id=job.id,
@@ -223,10 +234,11 @@ async def _write_candidate(
             )
             post.cover_url = candidate.cover_url
         await session.flush()
-        warnings = await _write_taxonomy_links(session, post, candidate, locale, taxonomy)
-        if warnings:
-            item.warnings = [*item.warnings, *warnings]
-            job.warning_count += len(warnings)
+        if write_taxonomy:
+            warnings = await _write_taxonomy_links(session, post, candidate, locale, taxonomy)
+            if warnings:
+                item.warnings = [*item.warnings, *warnings]
+                job.warning_count += len(warnings)
         last_revision = await session.scalar(
             select(ContentRevision.revision_no)
             .where(ContentRevision.target_type == "post", ContentRevision.target_id == post.id)
@@ -341,6 +353,23 @@ def _resource_url(resource: dict[str, object]) -> str | None:
     return url if url and urlsplit(url).scheme in {"http", "https"} else None
 
 
+def _media_created_at(resource: dict[str, object], filename: str | None) -> datetime | None:
+    """Use Halo metadata first, then its timestamped object names as a safe fallback."""
+    value = _string(
+        _resource_value(resource, "creationTime", "createTime", "createdAt", "uploadedAt")
+    )
+    if value:
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed
+        except ValueError:
+            pass
+    matched = re.match(r"^(20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})", filename or "")
+    if not matched:
+        return None
+    return datetime.fromisoformat(matched.group(1)).replace(tzinfo=UTC)
+
+
 def _slugify(value: str, fallback: str) -> str:
     cleaned = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return cleaned[:170] or fallback[:170]
@@ -430,7 +459,10 @@ async def _import_site_properties(session, resources: list[dict[str, object]]) -
 
 
 async def _import_media_and_galleries(
-    session, resources: list[dict[str, object]], locale: str
+    session,
+    resources: list[dict[str, object]],
+    attachment_groups: dict[str, dict[str, object]],
+    locale: str,
 ) -> int:
     imported = 0
     galleries: dict[str, Gallery] = {}
@@ -446,12 +478,14 @@ async def _import_media_and_galleries(
             _string(_resource_value(resource, "mediaType", "mimeType"))
             or "application/octet-stream"
         )
+        original_name = _string(_resource_value(resource, "displayName", "name"))
+        created_at = _media_created_at(resource, original_name)
         if media is None:
             media = Media(
                 bucket_name="halo-external",
                 object_key=f"halo/external/{source_id}",
                 source_url=url,
-                original_name=_string(_resource_value(resource, "displayName", "name")),
+                original_name=original_name,
                 mime_type=mime_type,
                 byte_size=_integer(_resource_value(resource, "size", "byteSize")),
                 checksum=hashlib.sha256(url.encode("utf-8")).hexdigest(),
@@ -469,10 +503,19 @@ async def _import_media_and_galleries(
             media.origin_url = url
             media.mime_type = mime_type
             media.byte_size = _integer(_resource_value(resource, "size", "byteSize"))
+        if created_at is not None:
+            media.ctime = created_at
 
         group = _string(_resource_value(resource, "groupName", "group"))
         if not group:
             continue
+        group_resource = attachment_groups.get(group, {})
+        group_name = (
+            _string(_resource_value(group_resource, "displayName", "name"))
+            or _string(group_resource.get("source_id"))
+            or group
+        )
+        group_description = _string(_resource_value(group_resource, "description"))
         gallery = galleries.get(group)
         if gallery is None:
             source_group_id = f"halo-attachment-group:{group}"
@@ -484,8 +527,9 @@ async def _import_media_and_galleries(
             if gallery is None:
                 gallery = Gallery(
                     locale=locale,
-                    slug=_slugify(group, "halo-gallery"),
-                    name=group,
+                    slug=_slugify(group_name, _slugify(group, "halo-gallery")),
+                    name=group_name,
+                    description=group_description,
                     status="published",
                     visibility="public",
                     source_platform="halo",
@@ -493,6 +537,13 @@ async def _import_media_and_galleries(
                 )
                 session.add(gallery)
                 await session.flush()
+            else:
+                # Earlier importer versions used the opaque Halo group ID as
+                # the title.  Refresh existing galleries when real group
+                # metadata becomes available on a later import.
+                gallery.name = group_name
+                if group_description:
+                    gallery.description = group_description
             galleries[group] = gallery
         exists = await session.scalar(
             select(GalleryItem).where(
@@ -719,11 +770,21 @@ async def run(args: argparse.Namespace) -> None:
         )
         session.add(job)
         await session.flush()
-        await _prepare_taxonomy(session, args.locale, taxonomy)
+        write_taxonomy = args.import_taxonomy or args.reset_database
+        write_navigation = args.import_navigation or args.reset_database
+        if write_taxonomy:
+            await _prepare_taxonomy(session, args.locale, taxonomy)
         for candidate in candidates:
             try:
                 imported = await _write_candidate(
-                    session, job, author, candidate, args.locale, args.update_existing, taxonomy
+                    session,
+                    job,
+                    author,
+                    candidate,
+                    args.locale,
+                    args.update_existing,
+                    taxonomy,
+                    write_taxonomy,
                 )
                 job.success_count += int(imported)
             except Exception as exc:
@@ -745,11 +806,12 @@ async def run(args: argparse.Namespace) -> None:
                 session, auxiliary.site_settings
             )
             auxiliary_counts["attachments"] = await _import_media_and_galleries(
-                session, auxiliary.attachments, args.locale
+                session, auxiliary.attachments, auxiliary.attachment_groups, args.locale
             )
-            auxiliary_counts["navigation"] = await _import_navigation(
-                session, auxiliary.menu_items, args.locale
-            )
+            if write_navigation:
+                auxiliary_counts["navigation"] = await _import_navigation(
+                    session, auxiliary.menu_items, args.locale
+                )
             auxiliary_counts["friend_links"] = await _import_friend_links(
                 session, auxiliary.friend_links, args.locale
             )

@@ -16,6 +16,10 @@ class LoginRequest(ApiModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+class VerifyEmailRequest(ApiModel):
+    token: str = Field(min_length=32, max_length=512)
+
+
 class UserPublic(ApiModel):
     id: str
     email: EmailStr
@@ -23,6 +27,8 @@ class UserPublic(ApiModel):
     role: str
     status: str
     email_verified: bool
+    avatar_media_id: str | None = None
+    avatar_url: str | None = None
 
 
 class CsrfResponse(ApiModel):
