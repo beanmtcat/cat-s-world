@@ -15,6 +15,10 @@ from app.db.session import get_session
 from app.models.core import Category, Comment, Page, Post, SiteProperties, Tag, User, UserSession
 from app.models.supplemental import (
     AITool,
+    FriendLink,
+    Gallery,
+    GalleryItem,
+    Media,
     NavigationItem,
     PostCategory,
     PostTag,
@@ -202,6 +206,20 @@ async def get_home(
         .order_by(Category.sort_order, Category.name)
         .limit(12)
     )
+    home_category_rows = await session.execute(
+        select(Category, func.count(PostCategory.post_id).label("post_count"))
+        .outerjoin(
+            PostCategory, (PostCategory.category_id == Category.id) & PostCategory.isvalid.is_(True)
+        )
+        .where(
+            Category.locale == locale,
+            Category.isvalid.is_(True),
+            Category.is_home_visible.is_(True),
+        )
+        .group_by(Category.id)
+        .order_by(Category.sort_order, Category.name)
+        .limit(12)
+    )
     tag_rows = await session.execute(
         select(Tag, func.count(PostTag.post_id).label("post_count"))
         .outerjoin(PostTag, (PostTag.tag_id == Tag.id) & PostTag.isvalid.is_(True))
@@ -222,13 +240,24 @@ async def get_home(
         .order_by(StatusNode.sort_order, StatusNode.code)
         .limit(8)
     )
+    site_view_count = await session.scalar(
+        select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
+            VisitDaily.locale == locale,
+            VisitDaily.isvalid.is_(True),
+        )
+    )
     return {
         "data": {
             "postCount": total,
+            "siteViewCount": int(site_view_count or 0),
             "posts": await _post_card_payloads(session, posts),
             "categories": [
                 {"id": str(item.id), "name": item.name, "slug": item.slug, "postCount": count}
                 for item, count in category_rows
+            ],
+            "homeCategories": [
+                {"id": str(item.id), "name": item.name, "slug": item.slug, "postCount": count}
+                for item, count in home_category_rows
             ],
             "tags": [
                 {
@@ -265,20 +294,105 @@ async def get_home(
     }
 
 
+@router.get("/tools")
+async def list_public_tools(
+    request: Request,
+    locale: str = Query("zh-CN", pattern="^(zh-CN|en-US)$"),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    rows = await session.scalars(
+        select(AITool)
+        .where(AITool.locale == locale, AITool.isvalid.is_(True))
+        .order_by(AITool.sort_order, AITool.category, AITool.name)
+    )
+    return {
+        "data": [
+            {
+                "id": str(item.id),
+                "name": item.name,
+                "slug": item.slug,
+                "url": item.url,
+                "description": item.description,
+                "provider": item.provider,
+                "category": item.category,
+                "iconKey": item.icon_key,
+                "isFeatured": item.is_featured,
+            }
+            for item in rows
+        ],
+        "meta": _meta(request),
+    }
+
+
+@router.get("/tags")
+async def list_public_tags(
+    request: Request,
+    locale: str = Query("zh-CN", pattern="^(zh-CN|en-US)$"),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    rows = await session.execute(
+        select(Tag, func.count(PostTag.post_id).label("post_count"))
+        .outerjoin(PostTag, (PostTag.tag_id == Tag.id) & PostTag.isvalid.is_(True))
+        .where(Tag.locale == locale, Tag.isvalid.is_(True))
+        .group_by(Tag.id)
+        .order_by(func.count(PostTag.post_id).desc(), Tag.name)
+    )
+    return {
+        "data": [
+            {"id": str(item.id), "name": item.name, "slug": item.slug, "postCount": count}
+            for item, count in rows
+        ],
+        "meta": _meta(request),
+    }
+
+
 @router.get("/navigation")
 async def get_navigation(
     request: Request,
     locale: str = Query("zh-CN", pattern="^(zh-CN|en-US)$"),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
-    rows = await session.scalars(
+    rows = list(await session.scalars(
         select(NavigationItem)
         .where(
             NavigationItem.isvalid.is_(True),
             NavigationItem.locale == locale,
         )
         .order_by(NavigationItem.location, NavigationItem.sort_order, NavigationItem.ctime, NavigationItem.id)
-    )
+    ))
+
+    def target_id(item: NavigationItem) -> UUID | None:
+        value = (item.target_ids or [None])[0]
+        try:
+            return UUID(str(value)) if value is not None else None
+        except (TypeError, ValueError, AttributeError):
+            return None
+
+    category_ids = {value for item in rows if item.target_type == "categories" if (value := target_id(item))}
+    tag_ids = {value for item in rows if item.target_type == "tags" if (value := target_id(item))}
+    category_urls = {
+        item_id: f"/categories/{slug}"
+        for item_id, slug in await session.execute(
+            select(Category.id, Category.slug).where(
+                Category.id.in_(category_ids), Category.isvalid.is_(True), Category.locale == locale
+            )
+        )
+    } if category_ids else {}
+    tag_urls = {
+        item_id: f"/tags/{slug}"
+        for item_id, slug in await session.execute(
+            select(Tag.id, Tag.slug).where(Tag.id.in_(tag_ids), Tag.isvalid.is_(True), Tag.locale == locale)
+        )
+    } if tag_ids else {}
+
+    def public_url(item: NavigationItem) -> str:
+        item_target_id = target_id(item)
+        if item.target_type == "categories" and item_target_id:
+            return category_urls.get(item_target_id, item.url)
+        if item.target_type == "tags" and item_target_id:
+            return tag_urls.get(item_target_id, item.url)
+        return item.url
+
     return {
         "data": [
             {
@@ -286,7 +400,7 @@ async def get_navigation(
                 "menuId": str(item.menu_id) if item.menu_id else None,
                 "location": item.location,
                 "label": item.label,
-                "url": item.url,
+                "url": public_url(item),
                 "parentId": str(item.parent_id) if item.parent_id else None,
                 "iconKey": item.icon_key,
                 "sortOrder": item.sort_order,
@@ -296,6 +410,96 @@ async def get_navigation(
         ],
         "meta": _meta(request),
     }
+
+
+@router.get("/friend-links")
+async def list_friend_links(
+    request: Request,
+    locale: str = Query("zh-CN", pattern="^(zh-CN|en-US)$"),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    rows = await session.scalars(
+        select(FriendLink)
+        .where(FriendLink.isvalid.is_(True), FriendLink.locale == locale)
+        .order_by(FriendLink.sort_order, FriendLink.name)
+    )
+    return {
+        "data": [
+            {"id": str(item.id), "name": item.name, "url": item.url, "logoUrl": item.logo_url,
+             "description": item.description, "rel": item.rel, "target": item.target}
+            for item in rows
+        ],
+        "meta": _meta(request),
+    }
+
+
+@router.get("/galleries")
+async def list_public_galleries(
+    request: Request,
+    locale: str = Query("zh-CN", pattern="^(zh-CN|en-US)$"),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    rows = await session.execute(
+        select(Gallery, func.count(GalleryItem.id))
+        .outerjoin(GalleryItem, (GalleryItem.gallery_id == Gallery.id) & GalleryItem.isvalid.is_(True))
+        .where(Gallery.isvalid.is_(True), Gallery.collection_kind == "gallery", Gallery.locale == locale, Gallery.status == "published", Gallery.visibility == "public")
+        .group_by(Gallery.id)
+        .order_by(Gallery.sort_order, Gallery.ctime.desc())
+    )
+    return {"data": [
+        {"id": str(item.id), "slug": item.slug, "name": item.name, "description": item.description,
+         "coverUrl": item.cover_url, "itemCount": count}
+        for item, count in rows
+    ], "meta": _meta(request)}
+
+
+@router.get("/galleries/{slug}")
+async def get_public_gallery(
+    slug: str,
+    request: Request,
+    locale: str = Query("zh-CN", pattern="^(zh-CN|en-US)$"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(24, ge=1, le=60),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    gallery = await session.scalar(select(Gallery).where(
+        Gallery.isvalid.is_(True), Gallery.collection_kind == "gallery", Gallery.locale == locale, Gallery.slug == slug,
+        Gallery.status == "published", Gallery.visibility.in_(("public", "unlisted")),
+    ))
+    if gallery is None:
+        raise AppError("GALLERY_NOT_FOUND", "图库不存在。", 404)
+    item_filter = (
+        GalleryItem.gallery_id == gallery.id,
+        GalleryItem.isvalid.is_(True),
+        Media.isvalid.is_(True),
+    )
+    total = await session.scalar(
+        select(func.count())
+        .select_from(GalleryItem)
+        .join(Media, Media.id == GalleryItem.media_id)
+        .where(*item_filter)
+    )
+    items = await session.execute(
+        select(Media, GalleryItem).join(GalleryItem, GalleryItem.media_id == Media.id).where(
+            *item_filter
+        # Imported attachments retain their original timestamp on Media.  Prefer an
+        # explicitly curated capture time when available, otherwise show newest
+        # files first.  The id tie-breaker keeps infinite-scroll pages stable.
+        ).order_by(
+            func.coalesce(GalleryItem.captured_at, Media.ctime).desc(),
+            GalleryItem.id.desc(),
+        ).offset((page - 1) * page_size).limit(page_size)
+    )
+    total_count = int(total or 0)
+    return {"data": {
+        "id": str(gallery.id), "slug": gallery.slug, "name": gallery.name, "description": gallery.description,
+        "coverUrl": gallery.cover_url,
+        "items": [{"id": str(media.id), "url": media.source_url, "mimeType": media.mime_type,
+                   "name": media.original_name, "alt": item.alt_text or media.original_name,
+                   "title": item.title, "description": item.description}
+                  for media, item in items],
+    }, "meta": {**_meta(request), "page": page, "pageSize": page_size,
+                "total": total_count, "totalPages": ceil(total_count / page_size) if total_count else 0}}
 
 
 @router.get("/posts/{slug}")
@@ -397,6 +601,7 @@ async def get_page(
             "slug": page.slug,
             "title": page.title,
             "content": page.content,
+            "contentFormat": page.content_format,
             "canonicalUrl": page.canonical_url,
             "robotsIndex": page.robots_index,
             "robotsFollow": page.robots_follow,
@@ -429,6 +634,12 @@ async def get_site(
         locale=locale,
         comments_enabled=properties.comments_enabled,
         sitemap_enabled=properties.sitemap_enabled,
+        posts_per_page=properties.posts_per_page,
+        category_posts_per_page=properties.category_posts_per_page,
+        tag_posts_per_page=properties.tag_posts_per_page,
+        site_keywords=properties.site_keywords,
+        seo_noindex=properties.seo_noindex,
+        registration_enabled=properties.registration_enabled,
     )
     return {"data": data.model_dump(mode="json", by_alias=True), "meta": _meta(request)}
 
@@ -465,16 +676,39 @@ async def list_comments(
     target_type, target_id = ("post", post_id) if post_id else ("page", page_id)
     target_column = Comment.post_id if target_type == "post" else Comment.page_id
     where = [Comment.isvalid.is_(True), Comment.status == "approved", target_column == target_id]
-    total = int(await session.scalar(select(func.count()).select_from(Comment).where(*where)) or 0)
-    rows = await session.scalars(
+    root_where = [*where, Comment.parent_id.is_(None)]
+    total = int(await session.scalar(select(func.count()).select_from(Comment).where(*root_where)) or 0)
+    roots = list(await session.scalars(
         select(Comment)
-        .where(*where)
-        .order_by(Comment.ctime.asc())
+        .where(*root_where)
+        .order_by(Comment.ctime.asc(), Comment.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
-    )
-    data = [
-        CommentPublic(
+    ))
+
+    # The public page is a conversation, not a chronological flat feed.  Load
+    # all approved descendants for the requested target and attach them below
+    # the paginated root comments.  This also avoids showing an admin reply as
+    # a second unrelated comment card.
+    rows = list(await session.scalars(
+        select(Comment)
+        .where(*where, Comment.parent_id.is_not(None))
+        .order_by(Comment.ctime.asc(), Comment.id)
+    ))
+    children_by_parent: dict[UUID, list[Comment]] = {}
+    for row in rows:
+        if row.parent_id is not None:
+            children_by_parent.setdefault(row.parent_id, []).append(row)
+
+    def comment_tree(row: Comment, ancestors: frozenset[UUID] = frozenset()) -> dict[str, object]:
+        # A malformed imported parent relation must never cause recursive JSON
+        # construction to loop forever.
+        children = [
+            comment_tree(child, ancestors | {row.id})
+            for child in children_by_parent.get(row.id, [])
+            if child.id not in ancestors
+        ]
+        payload = CommentPublic(
             id=row.id,
             target_type="post" if row.post_id else "page",
             target_id=row.post_id or row.page_id,
@@ -484,8 +718,10 @@ async def list_comments(
             status=row.status,
             ctime=row.ctime,
         ).model_dump(mode="json", by_alias=True)
-        for row in rows
-    ]
+        payload["replies"] = children
+        return payload
+
+    data = [comment_tree(row, frozenset({row.id})) for row in roots]
     return {
         "data": data,
         "meta": {
@@ -508,10 +744,10 @@ async def create_comment(
     client_ip = request.client.host if request.client else "unknown"
     await enforce_rate_limit("comment:ip", client_ip, limit=12, window_seconds=3600)
     user, _ = identity
-    comments_enabled = await session.scalar(
-        select(SiteProperties.comments_enabled).where(SiteProperties.isvalid.is_(True))
+    properties = await session.scalar(
+        select(SiteProperties).where(SiteProperties.isvalid.is_(True))
     )
-    if comments_enabled is not True:
+    if properties is None or not properties.comments_enabled:
         raise AppError("COMMENTS_DISABLED", "站点当前未开放评论。", 403)
     if user.status != "active" or user.email_verified_at is None:
         raise AppError("COMMENT_LOGIN_REQUIRED", "请验证邮箱后再发表评论。", 401)
@@ -539,7 +775,7 @@ async def create_comment(
         user_id=user.id,
         author_name=user.display_name,
         content=content,
-        status="pending",
+        status="pending" if properties.comments_moderation_enabled else "approved",
     )
     session.add(comment)
     await session.commit()

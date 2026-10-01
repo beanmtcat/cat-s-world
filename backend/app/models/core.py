@@ -96,6 +96,15 @@ class SiteProperties(IdTimestampValidityMixin, Base):
     )
     comments_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     sitemap_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    posts_per_page: Mapped[int] = mapped_column(default=12, server_default="12")
+    category_posts_per_page: Mapped[int] = mapped_column(default=12, server_default="12")
+    tag_posts_per_page: Mapped[int] = mapped_column(default=12, server_default="12")
+    site_keywords: Mapped[str | None] = mapped_column(String(1000))
+    seo_noindex: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    registration_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    comments_moderation_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true"
+    )
 
 
 class SearchEngineVerification(IdTimestampValidityMixin, Base):
@@ -213,6 +222,7 @@ class Page(IdTimestampValidityMixin, Base):
     source_platform: Mapped[str | None] = mapped_column(String(30))
     source_id: Mapped[str | None] = mapped_column(String(240), index=True)
     source_url: Mapped[str | None] = mapped_column(Text)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ContentRevision(IdTimestampValidityMixin, Base):
@@ -258,6 +268,9 @@ class Category(IdTimestampValidityMixin, Base):
     cover_url: Mapped[str | None] = mapped_column(Text)
     parent_id: Mapped[UUID | None] = mapped_column(index=True, comment="逻辑关联父分类 ID。")
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    is_home_visible: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", comment="是否在前台首页分类模块展示。"
+    )
 
 
 class Tag(IdTimestampValidityMixin, Base):
@@ -284,11 +297,17 @@ class Comment(IdTimestampValidityMixin, Base):
     post_id: Mapped[UUID | None] = mapped_column(index=True)
     page_id: Mapped[UUID | None] = mapped_column(index=True)
     parent_id: Mapped[UUID | None] = mapped_column(index=True)
-    user_id: Mapped[UUID] = mapped_column(index=True, comment="已验证会员 ID，禁止游客评论。")
+    # Locally submitted comments always have a user.  Imported legacy comments
+    # intentionally remain unaffiliated so they are not misrepresented as the
+    # administrator who performed the migration.
+    user_id: Mapped[UUID | None] = mapped_column(index=True, comment="已验证会员 ID；导入的历史访客评论可为空。")
     locale: Mapped[str] = mapped_column(String(10), default="zh-CN", server_default="zh-CN")
     author_name: Mapped[str] = mapped_column(String(120))
     content: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="pending", server_default="pending")
+    # Halo exports retain reply totals but omit the corresponding reply resources.
+    # Preserve the historical total so later local replies can be added to it.
+    legacy_reply_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     ip_hash: Mapped[str | None] = mapped_column(String(64))
     user_agent_hash: Mapped[str | None] = mapped_column(String(64))
     notify_replies: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")

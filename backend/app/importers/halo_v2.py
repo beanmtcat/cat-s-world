@@ -415,7 +415,11 @@ def _resource_record(name: str, payload: dict[str, object]) -> dict[str, object]
     # Halo ConfigMap values are stored at the top-level `data`, unlike CRD
     # resources such as Post and Setting which use `spec`.
     if not isinstance(spec, dict):
-        spec = {"data": data} if isinstance(data, dict) else None
+        # Metrics Counter objects store their value directly at the document
+        # root (`visit`, `upvote`, …), rather than in `spec` or ConfigMap
+        # `data`.  Preserve that payload so historical page views are not
+        # silently discarded during a workdir import.
+        spec = {"data": data} if isinstance(data, dict) else payload
     if spec is None:
         return None
     source_id = str(metadata.get("name") or name.rsplit("/", 1)[-1]).strip()
@@ -423,6 +427,7 @@ def _resource_record(name: str, payload: dict[str, object]) -> dict[str, object]
         return None
     return {
         "source_id": source_id,
+        "resource_name": name,
         "spec": spec,
         "status": status if isinstance(status, dict) else {},
         "metadata": metadata,

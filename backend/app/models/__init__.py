@@ -1,4 +1,5 @@
 from app.models.core import (
+    AuditLog,
     Category,
     Comment,
     ContentRevision,
@@ -37,6 +38,7 @@ from app.models.supplemental import (
 )
 
 __all__ = [
+    "AuditLog",
     "Category",
     "Comment",
     "ContentRevision",

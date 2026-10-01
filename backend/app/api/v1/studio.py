@@ -15,7 +15,7 @@ from uuid import UUID, uuid4
 import boto3
 from botocore.config import Config
 from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.db.session import get_session
 from app.models.core import (
+    AuditLog,
     Category,
     Comment,
     ContentRevision,
@@ -171,6 +172,7 @@ async def _post_library_payload(session: AsyncSession, post: Post) -> dict[str, 
             "viewCount": view_count or 0,
             "updatedAt": post.mtime,
             "createdAt": post.ctime,
+            "deletedAt": post.deleted_at,
         }
     )
     return payload
@@ -275,16 +277,21 @@ async def list_drafts(
     request: Request,
     page: int = Query(default=1, ge=1, le=10_000),
     page_size: int = Query(default=20, alias="pageSize", ge=1, le=100),
+    trashed: bool = Query(False),
     identity: tuple[User, UserSession] = Depends(require_roles("admin", "editor", "author")),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
     user = identity[0]
-    query = select(Post).where(Post.isvalid.is_(True))
+    query = select(Post).where(Post.isvalid.is_(not trashed))
     if user.role == "author":
         query = query.where(Post.author_id == user.id)
     total = await session.scalar(select(func.count()).select_from(query.subquery())) or 0
     rows = await session.scalars(
-        query.order_by(Post.published_at.desc().nulls_last(), Post.mtime.desc(), Post.id.desc())
+        query.order_by(
+            Post.deleted_at.desc().nulls_last() if trashed else Post.published_at.desc().nulls_last(),
+            Post.mtime.desc(),
+            Post.id.desc(),
+        )
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
@@ -474,8 +481,29 @@ async def delete_studio_post(
 ) -> Response:
     post = await _editable_post(session, post_id, identity[0])
     post.isvalid = False
+    post.deleted_at = datetime.now(UTC)
     await session.commit()
     return Response(status_code=204)
+
+
+@router.post("/posts/{post_id}/restore")
+async def restore_studio_post(
+    post_id: UUID,
+    request: Request,
+    identity: tuple[User, UserSession] = Depends(require_roles("admin", "editor", "author")),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    user = identity[0]
+    post = await session.scalar(select(Post).where(Post.id == post_id).with_for_update())
+    if post is None or post.isvalid:
+        raise AppError("POST_NOT_FOUND", "回收站中不存在这篇文章。", 404)
+    if user.role == "author" and post.author_id != user.id:
+        raise AppError("POST_FORBIDDEN", "你无权恢复这篇文章。", 403)
+    post.isvalid = True
+    post.deleted_at = None
+    await session.commit()
+    await session.refresh(post)
+    return {"data": _payload(post), "meta": {"requestId": str(request_id(request))}}
 
 
 @router.get("/dashboard")
@@ -517,7 +545,7 @@ async def _taxonomy_list(session: AsyncSession, model: type[Category] | type[Tag
     rows = await session.scalars(
         select(model).where(model.isvalid.is_(True)).order_by(model.locale, model.sort_order if model is Category else model.name)
     )
-    fields = ("locale", "name", "slug", "description") + (("sort_order",) if model is Category else ())
+    fields = ("locale", "name", "slug", "description") + (("sort_order", "is_home_visible") if model is Category else ())
     return [_entity_payload(item, fields) for item in rows]
 
 
@@ -527,6 +555,7 @@ async def _taxonomy_create(
     data = body.model_dump()
     if model is Tag:
         data.pop("sort_order")
+        data.pop("is_home_visible")
     item = model(**data)
     session.add(item)
     try:
@@ -545,7 +574,7 @@ async def _taxonomy_update(
     if item is None or not item.isvalid:
         raise AppError("TAXONOMY_NOT_FOUND", "分类或标签不存在。", 404)
     for field, value in body.model_dump().items():
-        if field == "sort_order" and model is Tag:
+        if field in {"sort_order", "is_home_visible"} and model is Tag:
             continue
         setattr(item, field, value)
     try:
@@ -565,13 +594,13 @@ async def list_categories(request: Request, _: tuple[User, UserSession] = Depend
 @router.post("/categories", status_code=201)
 async def create_category(body: StudioTaxonomyInput, request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     item = await _taxonomy_create(body, Category, session)
-    return {"data": _entity_payload(item, ("locale", "name", "slug", "description", "sort_order")), "meta": {"requestId": str(request_id(request))}}
+    return {"data": _entity_payload(item, ("locale", "name", "slug", "description", "sort_order", "is_home_visible")), "meta": {"requestId": str(request_id(request))}}
 
 
 @router.patch("/categories/{item_id}")
 async def update_category(item_id: UUID, body: StudioTaxonomyInput, request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     item = await _taxonomy_update(item_id, body, Category, session)
-    return {"data": _entity_payload(item, ("locale", "name", "slug", "description", "sort_order")), "meta": {"requestId": str(request_id(request))}}
+    return {"data": _entity_payload(item, ("locale", "name", "slug", "description", "sort_order", "is_home_visible")), "meta": {"requestId": str(request_id(request))}}
 
 
 @router.delete("/categories/{item_id}", status_code=204)
@@ -612,15 +641,22 @@ async def delete_tag(item_id: UUID, _: tuple[User, UserSession] = Depends(requir
 
 
 def _page_payload(page: Page, include_content: bool = False) -> dict[str, object]:
-    data = _entity_payload(page, ("locale", "slug", "title", "summary", "status", "visibility", "published_at", "seo_title", "seo_description", "content_format"))
+    data = _entity_payload(page, ("locale", "slug", "title", "summary", "status", "visibility", "published_at", "seo_title", "seo_description", "content_format", "deleted_at"))
+    data["updatedAt"] = page.mtime
+    data["createdAt"] = page.ctime
     if include_content:
         data["content"] = page.content
     return data
 
 
 @router.get("/pages")
-async def list_pages(request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
-    rows = await session.scalars(select(Page).where(Page.isvalid.is_(True)).order_by(Page.mtime.desc()).limit(100))
+async def list_pages(request: Request, trashed: bool = Query(False), _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    rows = await session.scalars(
+        select(Page)
+        .where(Page.isvalid.is_(not trashed))
+        .order_by(Page.deleted_at.desc().nulls_last() if trashed else Page.mtime.desc(), Page.id.desc())
+        .limit(100)
+    )
     return {"data": [_page_payload(page) for page in rows], "meta": {"requestId": str(request_id(request))}}
 
 
@@ -678,8 +714,21 @@ async def delete_page(page_id: UUID, _: tuple[User, UserSession] = Depends(requi
     if page is None or not page.isvalid:
         raise AppError("PAGE_NOT_FOUND", "独立页不存在。", 404)
     page.isvalid = False
+    page.deleted_at = datetime.now(UTC)
     await session.commit()
     return Response(status_code=204)
+
+
+@router.post("/pages/{page_id}/restore")
+async def restore_page(page_id: UUID, request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    page = await session.scalar(select(Page).where(Page.id == page_id).with_for_update())
+    if page is None or page.isvalid:
+        raise AppError("PAGE_NOT_FOUND", "回收站中不存在这个独立页。", 404)
+    page.isvalid = True
+    page.deleted_at = None
+    await session.commit()
+    await session.refresh(page)
+    return {"data": _page_payload(page), "meta": {"requestId": str(request_id(request))}}
 
 
 def _tool_payload(item: AITool) -> dict[str, object]:
@@ -769,19 +818,14 @@ async def _navigation_target_url(session: AsyncSession, body: StudioNavigationIn
         target = await session.get(model, target_ids[0])
         if target is None or not target.isvalid or target.locale != body.locale:
             raise AppError("NAVIGATION_TARGET_INVALID", "指定的菜单目标不存在、已失效或语言不一致。", 422)
-        return f"/archives/{target.slug}" if body.target_type == "post" else f"/pages/{target.slug}"
-    if not target_ids:
-        raise AppError("NAVIGATION_TARGET_REQUIRED", "分类或标签菜单至少选择一个目标。", 422)
+        return f"/archives/{target.slug}" if body.target_type == "post" else f"/{target.slug}"
+    if len(target_ids) != 1:
+        raise AppError("NAVIGATION_TARGET_REQUIRED", "分类或标签菜单必须指定一个目标。", 422)
     model = Category if body.target_type == "categories" else Tag
-    targets = list(
-        await session.scalars(
-            select(model).where(model.id.in_(target_ids), model.isvalid.is_(True), model.locale == body.locale)
-        )
-    )
-    if len(targets) != len(target_ids):
+    target = await session.get(model, target_ids[0])
+    if target is None or not target.isvalid or target.locale != body.locale:
         raise AppError("NAVIGATION_TARGET_INVALID", "所选分类或标签不存在、已失效或语言不一致。", 422)
-    key = "categories" if body.target_type == "categories" else "tags"
-    return f"/posts?{key}=" + ",".join(item.slug for item in targets)
+    return f"/categories/{target.slug}" if body.target_type == "categories" else f"/tags/{target.slug}"
 
 
 async def _validate_navigation_parent(
@@ -1073,7 +1117,9 @@ def _site_payload(item: SiteProperties) -> dict[str, object]:
     return _entity_payload(item, (
         "site_name_zh", "site_name_en", "site_description_zh", "site_description_en",
         "logo_url", "favicon_url", "default_og_image_url", "default_locale", "timezone",
-        "comments_enabled", "sitemap_enabled",
+        "comments_enabled", "sitemap_enabled", "posts_per_page", "category_posts_per_page",
+        "tag_posts_per_page", "site_keywords", "seo_noindex", "registration_enabled",
+        "comments_moderation_enabled",
     ))
 
 
@@ -1096,14 +1142,24 @@ async def update_site_settings(body: StudioSitePropertiesUpdate, request: Reques
     return {"data": _site_payload(item), "meta": {"requestId": str(request_id(request))}}
 
 
-def _comment_payload(item: Comment) -> dict[str, object]:
+def _comment_payload(
+    item: Comment,
+    target_title: str | None = None,
+    target_path: str | None = None,
+    reply_count: int = 0,
+    replies: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
     target_type = "post" if item.post_id else "page"
     return {
         "id": str(item.id), "targetType": target_type, "targetId": str(item.post_id or item.page_id),
-        "authorName": item.author_name, "content": item.content, "status": item.status,
+        "authorName": item.author_name, "authorKind": "member" if item.user_id else "visitor",
+        "content": item.content, "status": item.status, "targetTitle": target_title or "已删除内容",
+        "targetPath": target_path,
         "ctime": item.ctime, "moderationNote": item.moderation_note,
         "parentId": str(item.parent_id) if item.parent_id else None,
-        "userId": str(item.user_id),
+        "userId": str(item.user_id) if item.user_id else None,
+        "replyCount": max(0, item.legacy_reply_count) + max(0, reply_count),
+        "replies": replies or [],
     }
 
 
@@ -1266,6 +1322,7 @@ async def list_media(
     keyword: str | None = Query(None, max_length=240),
     media_type: str | None = Query(None, pattern=r"^(image|video|audio|document|other)$"),
     gallery_id: UUID | None = Query(None),
+    gallery_only: bool = Query(False),
     ungrouped: bool = Query(False),
     sort: str = Query("newest", pattern=r"^(newest|oldest|name)$"),
     _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")),
@@ -1291,6 +1348,18 @@ async def list_media(
                 ~Media.mime_type.ilike("application/%"),
                 ~Media.mime_type.ilike("text/%"),
             ]
+        )
+    if gallery_only:
+        filters.append(
+            Media.id.in_(
+                select(GalleryItem.media_id)
+                .join(Gallery, Gallery.id == GalleryItem.gallery_id)
+                .where(
+                    GalleryItem.isvalid.is_(True),
+                    Gallery.isvalid.is_(True),
+                    Gallery.collection_kind == "gallery",
+                )
+            )
         )
     if gallery_id:
         filters.append(
@@ -1496,15 +1565,27 @@ async def delete_media(item_id: UUID, _: tuple[User, UserSession] = Depends(requ
 
 @router.get("/galleries")
 async def list_galleries(request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
-    query = select(Gallery, func.count(GalleryItem.id)).outerjoin(GalleryItem, (GalleryItem.gallery_id == Gallery.id) & GalleryItem.isvalid.is_(True)).where(Gallery.isvalid.is_(True)).group_by(Gallery.id).order_by(Gallery.sort_order, Gallery.ctime.desc())
+    query = select(Gallery, func.count(GalleryItem.id)).outerjoin(GalleryItem, (GalleryItem.gallery_id == Gallery.id) & GalleryItem.isvalid.is_(True)).where(Gallery.isvalid.is_(True), Gallery.collection_kind == "gallery").group_by(Gallery.id).order_by(Gallery.sort_order, Gallery.ctime.desc())
     rows = (await session.execute(query)).all()
+    return {"data": [_gallery_payload(item, count) for item, count in rows], "meta": {"requestId": str(request_id(request))}}
+
+
+@router.get("/media-groups")
+async def list_media_groups(request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    rows = await session.execute(
+        select(Gallery, func.count(GalleryItem.id))
+        .outerjoin(GalleryItem, (GalleryItem.gallery_id == Gallery.id) & GalleryItem.isvalid.is_(True))
+        .where(Gallery.isvalid.is_(True), Gallery.collection_kind == "attachment_group")
+        .group_by(Gallery.id)
+        .order_by(Gallery.sort_order, Gallery.name)
+    )
     return {"data": [_gallery_payload(item, count) for item, count in rows], "meta": {"requestId": str(request_id(request))}}
 
 
 @router.get("/galleries/{gallery_id}")
 async def get_gallery(gallery_id: UUID, request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     item = await session.get(Gallery, gallery_id)
-    if item is None or not item.isvalid:
+    if item is None or not item.isvalid or item.collection_kind != "gallery":
         raise AppError("GALLERY_NOT_FOUND", "图库不存在。", 404)
     media_ids = list(await session.scalars(select(GalleryItem.media_id).where(GalleryItem.gallery_id == item.id, GalleryItem.isvalid.is_(True)).order_by(GalleryItem.sort_order)))
     return {"data": {**_gallery_payload(item, len(media_ids)), "mediaIds": [str(value) for value in media_ids]}, "meta": {"requestId": str(request_id(request))}}
@@ -1529,7 +1610,7 @@ async def create_gallery(body: StudioGalleryInput, request: Request, _: tuple[Us
 @router.put("/galleries/{gallery_id}")
 async def update_gallery(gallery_id: UUID, body: StudioGalleryInput, request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     item = await session.get(Gallery, gallery_id)
-    if item is None or not item.isvalid:
+    if item is None or not item.isvalid or item.collection_kind != "gallery":
         raise AppError("GALLERY_NOT_FOUND", "图库不存在。", 404)
     for field, value in body.model_dump(exclude={"media_ids"}).items():
         setattr(item, field, value)
@@ -1546,7 +1627,7 @@ async def update_gallery(gallery_id: UUID, body: StudioGalleryInput, request: Re
 @router.delete("/galleries/{gallery_id}", status_code=204)
 async def delete_gallery(gallery_id: UUID, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> Response:
     item = await session.get(Gallery, gallery_id)
-    if item is None or not item.isvalid:
+    if item is None or not item.isvalid or item.collection_kind != "gallery":
         raise AppError("GALLERY_NOT_FOUND", "图库不存在。", 404)
     item.isvalid = False
     await session.execute(update(GalleryItem).where(GalleryItem.gallery_id == item.id, GalleryItem.isvalid.is_(True)).values(isvalid=False))
@@ -1558,6 +1639,29 @@ async def delete_gallery(gallery_id: UUID, _: tuple[User, UserSession] = Depends
 async def list_users(request: Request, _: tuple[User, UserSession] = Depends(require_roles("admin")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     rows = await session.scalars(select(User).where(User.isvalid.is_(True)).order_by(User.ctime.desc()).limit(500))
     return {"data": [_user_payload(item) for item in rows], "meta": {"requestId": str(request_id(request))}}
+
+
+@router.get("/audit-logs")
+async def list_audit_logs(
+    request: Request,
+    page: int = Query(1, ge=1, le=10_000),
+    page_size: int = Query(50, alias="pageSize", ge=1, le=100),
+    _: tuple[User, UserSession] = Depends(require_roles("admin")),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    total = await session.scalar(select(func.count(AuditLog.id))) or 0
+    rows = list(await session.scalars(
+        select(AuditLog).order_by(AuditLog.ctime.desc()).offset((page - 1) * page_size).limit(page_size)
+    ))
+    actor_ids = {row.actor_id for row in rows if row.actor_id}
+    names = dict((await session.execute(select(User.id, User.display_name).where(User.id.in_(actor_ids)))).all()) if actor_ids else {}
+    return {"data": [
+        {"id": str(row.id), "action": row.action, "targetType": row.target_type, "targetId": row.target_id,
+         "actorId": str(row.actor_id) if row.actor_id else None, "actorName": names.get(row.actor_id, "系统"),
+         "ctime": row.ctime, "payload": row.payload or {}}
+        for row in rows
+    ], "meta": {"requestId": str(request_id(request)), "page": page, "pageSize": page_size,
+                 "total": total, "totalPages": ceil(total / page_size) if total else 0}}
 
 
 @router.patch("/users/{user_id}")
@@ -1592,12 +1696,98 @@ async def update_user(user_id: UUID, body: StudioUserUpdate, request: Request, i
 
 
 @router.get("/comments")
-async def list_comments(request: Request, status: str | None = None, _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
-    query = select(Comment).where(Comment.isvalid.is_(True))
-    if status:
-        query = query.where(Comment.status == status)
-    rows = await session.scalars(query.order_by(Comment.ctime.desc()).limit(100))
-    return {"data": [_comment_payload(item) for item in rows], "meta": {"requestId": str(request_id(request))}}
+async def list_comments(
+    request: Request,
+    status: str = Query("all", pattern="^(all|pending|approved|rejected|spam)$"),
+    owner: str = Query("all", pattern="^(all|member|visitor)$"),
+    keyword: str = Query("", max_length=120),
+    sort: str = Query("newest", pattern="^(newest|oldest)$"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    # The workbench is a conversation list: replies belong under their parent,
+    # not as unrelated top-level rows (which also keeps pagination truthful).
+    filters = [Comment.isvalid.is_(True), Comment.parent_id.is_(None)]
+    if status != "all":
+        filters.append(Comment.status == status)
+    if owner == "member":
+        filters.append(Comment.user_id.is_not(None))
+    elif owner == "visitor":
+        filters.append(Comment.user_id.is_(None))
+    if keyword.strip():
+        term = f"%{keyword.strip()}%"
+        filters.append(or_(Comment.author_name.ilike(term), Comment.content.ilike(term)))
+    total = int(await session.scalar(select(func.count()).select_from(Comment).where(*filters)) or 0)
+    order_by = Comment.ctime.asc() if sort == "oldest" else Comment.ctime.desc()
+    rows = list(await session.scalars(select(Comment).where(*filters).order_by(order_by, Comment.id).offset((page - 1) * page_size).limit(page_size)))
+    post_ids = {item.post_id for item in rows if item.post_id}
+    page_ids = {item.page_id for item in rows if item.page_id}
+    post_targets = {
+        item_id: (title, f"/archives/{slug}")
+        for item_id, title, slug in (await session.execute(
+            select(Post.id, Post.title, Post.slug).where(Post.id.in_(post_ids))
+        )).all()
+    } if post_ids else {}
+    page_targets = {
+        item_id: (title, f"/{slug}")
+        for item_id, title, slug in (await session.execute(
+            select(Page.id, Page.title, Page.slug).where(Page.id.in_(page_ids))
+        )).all()
+    } if page_ids else {}
+    comment_ids = [item.id for item in rows]
+    reply_target_filters = []
+    if post_ids:
+        reply_target_filters.append(Comment.post_id.in_(post_ids))
+    if page_ids:
+        reply_target_filters.append(Comment.page_id.in_(page_ids))
+    reply_rows = list(await session.scalars(
+        select(Comment)
+        .where(Comment.parent_id.is_not(None), Comment.isvalid.is_(True), or_(*reply_target_filters))
+        .order_by(Comment.ctime.asc(), Comment.id)
+    )) if comment_ids and reply_target_filters else []
+    replies_by_parent: dict[UUID, list[Comment]] = {}
+    for reply in reply_rows:
+        if reply.parent_id is None:
+            continue
+        replies_by_parent.setdefault(reply.parent_id, []).append(reply)
+
+    def reply_tree(parent_id: UUID, ancestors: frozenset[UUID] = frozenset()) -> list[dict[str, object]]:
+        tree: list[dict[str, object]] = []
+        for reply in replies_by_parent.get(parent_id, []):
+            if reply.id in ancestors:
+                continue
+            children = reply_tree(reply.id, ancestors | {reply.id})
+            tree.append({
+                "id": str(reply.id),
+                "authorName": reply.author_name,
+                "authorKind": "member" if reply.user_id else "visitor",
+                "content": reply.content,
+                "status": reply.status,
+                "ctime": reply.ctime,
+                "replies": children,
+            })
+        return tree
+
+    def reply_total(tree: list[dict[str, object]]) -> int:
+        return sum(1 + reply_total(item["replies"]) for item in tree)
+
+    data = []
+    for item in rows:
+        target = post_targets.get(item.post_id) or page_targets.get(item.page_id)
+        replies = reply_tree(item.id, frozenset({item.id}))
+        data.append(_comment_payload(
+            item,
+            target[0] if target else None,
+            target[1] if target else None,
+            reply_total(replies),
+            replies,
+        ))
+    return {"data": data, "meta": {
+        "requestId": str(request_id(request)), "page": page, "pageSize": page_size,
+        "total": total, "totalPages": ceil(total / page_size) if total else 0,
+    }}
 
 
 @router.patch("/comments/{comment_id}")

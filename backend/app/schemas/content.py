@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.schemas.common import ApiModel
 
@@ -66,6 +67,7 @@ class StudioTaxonomyInput(ApiModel):
     description: str | None = Field(default=None, max_length=4000)
     locale: Literal["zh-CN", "en-US"] = "zh-CN"
     sort_order: int = Field(default=0, ge=0, le=100000)
+    is_home_visible: bool = True
 
 
 class StudioPageInput(ApiModel):
@@ -101,7 +103,7 @@ class StudioNavigationInput(ApiModel):
     label: str = Field(min_length=1, max_length=80)
     url: str | None = Field(default=None, max_length=2048)
     target_type: Literal["custom", "post", "page", "categories", "tags"] = "custom"
-    target_ids: list[UUID] = Field(default_factory=list, max_length=100)
+    target_ids: list[UUID] = Field(default_factory=list, max_length=1)
     icon_key: str | None = Field(default=None, max_length=120)
     parent_id: UUID | None = None
     sort_order: int = Field(default=0, ge=0, le=100000)
@@ -139,6 +141,17 @@ class StudioFriendLinkInput(ApiModel):
     rel: str = Field(default="noopener noreferrer", max_length=80)
     target: Literal["_self", "_blank"] = "_blank"
     sort_order: int = Field(default=0, ge=0, le=100000)
+
+    @field_validator("url", "logo_url")
+    @classmethod
+    def validate_external_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        parsed = urlsplit(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("链接必须是完整的 http 或 https URL。")
+        return value
 
 
 class StudioGalleryInput(ApiModel):
@@ -181,6 +194,13 @@ class StudioSitePropertiesUpdate(ApiModel):
     timezone: str | None = Field(default=None, max_length=80)
     comments_enabled: bool | None = None
     sitemap_enabled: bool | None = None
+    posts_per_page: int | None = Field(default=None, ge=1, le=100)
+    category_posts_per_page: int | None = Field(default=None, ge=1, le=100)
+    tag_posts_per_page: int | None = Field(default=None, ge=1, le=100)
+    site_keywords: str | None = Field(default=None, max_length=1000)
+    seo_noindex: bool | None = None
+    registration_enabled: bool | None = None
+    comments_moderation_enabled: bool | None = None
 
 
 class StudioCommentModeration(ApiModel):
@@ -215,3 +235,9 @@ class SitePublic(ApiModel):
     locale: str
     comments_enabled: bool
     sitemap_enabled: bool
+    posts_per_page: int
+    category_posts_per_page: int
+    tag_posts_per_page: int
+    site_keywords: str | None
+    seo_noindex: bool
+    registration_enabled: bool

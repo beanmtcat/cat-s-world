@@ -73,6 +73,8 @@ export const authApi = {
 
 export const contentApi = {
   home: (locale = publicLocale()) => api(`/home?locale=${locale}`),
+  tools: (locale = publicLocale()) => api(`/tools?locale=${locale}`),
+  tags: (locale = publicLocale()) => api(`/tags?locale=${locale}`),
   navigation: (locale = publicLocale()) => api(`/navigation?locale=${locale}`),
   posts: (params = {}) => {
     const search = new URLSearchParams(Object.entries({ locale: publicLocale(), ...params }).filter(([, value]) => value));
@@ -85,6 +87,13 @@ export const contentApi = {
   },
   createComment: (body) => api('/comments', { method: 'POST', body }),
   site: (locale = publicLocale()) => api(`/site?locale=${locale}`),
+  page: (slug, locale = publicLocale()) => api(`/pages/${encodeURIComponent(slug)}?locale=${locale}`),
+  friendLinks: (locale = publicLocale()) => api(`/friend-links?locale=${locale}`),
+  galleries: (locale = publicLocale()) => api(`/galleries?locale=${locale}`),
+  gallery: (slug, params = {}) => {
+    const search = new URLSearchParams(Object.entries({ locale: publicLocale(), ...params }).filter(([, value]) => value !== undefined && value !== null && value !== ''));
+    return api(`/galleries/${encodeURIComponent(slug)}?${search}`);
+  },
 };
 
 export const studioApi = {
@@ -97,6 +106,7 @@ export const studioApi = {
   post: (id) => api(`/studio/posts/${id}`),
   updatePost: (id, body) => api(`/studio/posts/${id}`, { method: 'PATCH', body }),
   deletePost: (id) => api(`/studio/posts/${id}`, { method: 'DELETE' }),
+  restorePost: (id) => api(`/studio/posts/${id}/restore`, { method: 'POST' }),
   categories: () => api('/studio/categories'),
   createCategory: (body) => api('/studio/categories', { method: 'POST', body }),
   updateCategory: (id, body) => api(`/studio/categories/${id}`, { method: 'PATCH', body }),
@@ -105,11 +115,15 @@ export const studioApi = {
   createTag: (body) => api('/studio/tags', { method: 'POST', body }),
   updateTag: (id, body) => api(`/studio/tags/${id}`, { method: 'PATCH', body }),
   deleteTag: (id) => api(`/studio/tags/${id}`, { method: 'DELETE' }),
-  pages: () => api('/studio/pages'),
+  pages: (params = {}) => {
+    const search = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ''));
+    return api(`/studio/pages${search.size ? `?${search}` : ''}`);
+  },
   page: (id) => api(`/studio/pages/${id}`),
   createPage: (body) => api('/studio/pages', { method: 'POST', body }),
   updatePage: (id, body) => api(`/studio/pages/${id}`, { method: 'PUT', body }),
   deletePage: (id) => api(`/studio/pages/${id}`, { method: 'DELETE' }),
+  restorePage: (id) => api(`/studio/pages/${id}/restore`, { method: 'POST' }),
   tools: () => api('/studio/tools'),
   createTool: (body) => api('/studio/tools', { method: 'POST', body }),
   updateTool: (id, body) => api(`/studio/tools/${id}`, { method: 'PUT', body }),
@@ -126,7 +140,10 @@ export const studioApi = {
   createStatusNode: (body) => api('/studio/status-nodes', { method: 'POST', body }),
   updateStatusNode: (id, body) => api(`/studio/status-nodes/${id}`, { method: 'PUT', body }),
   deleteStatusNode: (id) => api(`/studio/status-nodes/${id}`, { method: 'DELETE' }),
-  comments: (status = '') => api(`/studio/comments${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  comments: (params = {}) => {
+    const search = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '' && value !== 'all'));
+    return api(`/studio/comments${search.size ? `?${search}` : ''}`);
+  },
   moderateComment: (id, body) => api(`/studio/comments/${id}`, { method: 'PATCH', body }),
   replyComment: (id, body) => api(`/studio/comments/${id}/reply`, { method: 'POST', body }),
   friendLinks: () => api('/studio/friend-links'),
@@ -141,12 +158,14 @@ export const studioApi = {
   deleteMedia: (id) => api(`/studio/media/${id}`, { method: 'DELETE' }),
   uploadMedia: (file, options = {}) => upload('/studio/media/upload', file, options),
   galleries: () => api('/studio/galleries'),
+  mediaGroups: () => api('/studio/media-groups'),
   gallery: (id) => api(`/studio/galleries/${id}`),
   createGallery: (body) => api('/studio/galleries', { method: 'POST', body }),
   updateGallery: (id, body) => api(`/studio/galleries/${id}`, { method: 'PUT', body }),
   deleteGallery: (id) => api(`/studio/galleries/${id}`, { method: 'DELETE' }),
   users: () => api('/studio/users'),
   updateUser: (id, body) => api(`/studio/users/${id}`, { method: 'PATCH', body }),
+  auditLogs: (params = {}) => { const search = new URLSearchParams(Object.entries(params).filter(([, value]) => value != null)); return api(`/studio/audit-logs${search.size ? `?${search}` : ''}`); },
   siteSettings: () => api('/studio/settings/site'),
   updateSiteSettings: (body) => api('/studio/settings/site', { method: 'PATCH', body }),
 };

@@ -115,7 +115,7 @@ class NavigationItem(IdTimestampValidityMixin, Base):
         String(20), default="custom", server_default="custom", comment="custom、post、page、categories 或 tags。"
     )
     target_ids: Mapped[list[str]] = mapped_column(
-        JSONB, default=list, server_default="[]", comment="目标内容逻辑 ID 列表；分类和标签可选择多个。"
+        JSONB, default=list, server_default="[]", comment="目标内容逻辑 ID 列表；每个菜单项只指向一个目标。"
     )
     icon_key: Mapped[str | None] = mapped_column(String(120))
     parent_id: Mapped[UUID | None] = mapped_column(index=True)
@@ -265,6 +265,9 @@ class Gallery(IdTimestampValidityMixin, Base):
     status: Mapped[str] = mapped_column(String(20), default="draft", server_default="draft")
     visibility: Mapped[str] = mapped_column(String(20), default="public", server_default="public")
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    collection_kind: Mapped[str] = mapped_column(
+        String(24), default="gallery", server_default="gallery", index=True
+    )
     source_platform: Mapped[str | None] = mapped_column(String(30))
     source_id: Mapped[str | None] = mapped_column(String(240), index=True)
 

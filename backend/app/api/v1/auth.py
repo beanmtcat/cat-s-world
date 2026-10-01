@@ -9,7 +9,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.security import hash_identifier
 from app.db.session import get_session
-from app.models.core import User, UserSession
+from app.models.core import SiteProperties, User, UserSession
 from app.models.supplemental import Media
 from app.schemas.auth import LoginRequest, RegisterRequest, UserPublic, VerifyEmailRequest
 from app.services.auth import login, register_member, revoke_session, verify_email
@@ -64,6 +64,11 @@ def _set_session_cookies(response: Response, raw_token: str, csrf_token: str) ->
 async def register(
     body: RegisterRequest, request: Request, session: AsyncSession = Depends(get_session)
 ) -> dict[str, object]:
+    registration_enabled = await session.scalar(
+        select(SiteProperties.registration_enabled).where(SiteProperties.isvalid.is_(True))
+    )
+    if registration_enabled is False:
+        raise AppError("REGISTRATION_DISABLED", "站点暂未开放注册。", 403)
     client_ip = request.client.host if request.client else "unknown"
     await enforce_rate_limit("register:ip", client_ip, limit=5, window_seconds=3600)
     await enforce_rate_limit("register:email", body.email.lower(), limit=3, window_seconds=3600)

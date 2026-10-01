@@ -10,7 +10,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 
 from app.core.errors import AppError
 from app.db.session import SessionLocal
@@ -64,6 +64,16 @@ def _arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--reset-database", action="store_true", help="导入前清空当前数据库的 public 表数据"
+    )
+    parser.add_argument(
+        "--statistics-only",
+        action="store_true",
+        help="只导入 Halo 备份中的历史访问统计，不改动文章、页面或其他站点数据",
+    )
+    parser.add_argument(
+        "--site-view-total",
+        type=int,
+        help="旧站展示的累计访问量；仅与 --statistics-only 一起使用，用于补齐备份后的访问增量",
     )
     parser.add_argument(
         "--confirm-reset", action="store_true", help="确认不可逆的 --reset-database 操作"
@@ -451,10 +461,24 @@ async def _import_site_properties(session, resources: list[dict[str, object]]) -
     for attribute, aliases in {
         "comments_enabled": ("commentsEnabled", "commentEnabled", "allowComment"),
         "sitemap_enabled": ("sitemapEnabled",),
+        "seo_noindex": ("seoNoindex", "noIndex"),
+        "registration_enabled": ("registrationEnabled", "enableRegistration"),
+        "comments_moderation_enabled": ("commentsModerationEnabled", "commentNeedAudit"),
     }.items():
         value = _setting(values, *aliases)
         if isinstance(value, bool):
             setattr(properties, attribute, value)
+    for attribute, aliases in {
+        "posts_per_page": ("postsPerPage", "postPageSize"),
+        "category_posts_per_page": ("categoryPostsPerPage", "categoryPageSize"),
+        "tag_posts_per_page": ("tagPostsPerPage", "tagPageSize"),
+    }.items():
+        value = _setting(values, *aliases)
+        if isinstance(value, int) and 1 <= value <= 100:
+            setattr(properties, attribute, value)
+    keywords = _string(_setting(values, "siteKeywords", "keywords", "seoKeywords"))
+    if keywords:
+        properties.site_keywords = keywords[:1000]
     return 1
 
 
@@ -478,7 +502,10 @@ async def _import_media_and_galleries(
             _string(_resource_value(resource, "mediaType", "mimeType"))
             or "application/octet-stream"
         )
-        original_name = _string(_resource_value(resource, "displayName", "name"))
+        # Halo exports use displayName, while some attachment exporters use
+        # title.  Keep the human-facing label rather than falling back to the
+        # timestamped object key shown in the URL.
+        original_name = _string(_resource_value(resource, "displayName", "title", "name"))
         created_at = _media_created_at(resource, original_name)
         if media is None:
             media = Media(
@@ -501,6 +528,10 @@ async def _import_media_and_galleries(
         else:
             media.source_url = url
             media.origin_url = url
+            # Re-imports must repair names written by older importer versions;
+            # otherwise an early timestamped filename would be permanent.
+            if original_name:
+                media.original_name = original_name
             media.mime_type = mime_type
             media.byte_size = _integer(_resource_value(resource, "size", "byteSize"))
         if created_at is not None:
@@ -532,6 +563,7 @@ async def _import_media_and_galleries(
                     description=group_description,
                     status="published",
                     visibility="public",
+                    collection_kind="attachment_group",
                     source_platform="halo",
                     source_id=source_group_id,
                 )
@@ -653,6 +685,16 @@ async def _import_comments(
         content = _string(spec.get("raw")) or _string(spec.get("content"))
         if not content:
             continue
+        source_status = resource.get("status")
+        historical_reply_count = _integer(
+            source_status.get("visibleReplyCount") if isinstance(source_status, dict) else 0
+        )
+        owner = spec.get("owner")
+        author_name = (
+            _string(owner.get("displayName")) or _string(owner.get("name"))
+            if isinstance(owner, dict)
+            else _string(owner)
+        ) or "匿名访客"
         comment = await session.scalar(
             select(Comment).where(Comment.source_platform == "halo", Comment.source_id == source_id)
         )
@@ -660,19 +702,29 @@ async def _import_comments(
             comment = Comment(
                 post_id=target.id if isinstance(target, Post) else None,
                 page_id=target.id if isinstance(target, Page) else None,
-                user_id=author.id,
+                # Halo owners are external identities, not the operator who
+                # imported the backup.  Do not present every old comment as an
+                # administrator comment.
+                user_id=None,
                 locale=locale,
-                author_name=_string(spec.get("owner")) or author.display_name,
+                author_name=author_name,
                 content=content,
                 status="approved" if bool(spec.get("approved")) else "pending",
+                legacy_reply_count=max(0, historical_reply_count),
                 source_platform="halo",
                 source_id=source_id,
             )
             session.add(comment)
             imported += 1
         else:
+            comment.user_id = None
+            comment.author_name = author_name
             comment.content = content
             comment.status = "approved" if bool(spec.get("approved")) else "pending"
+            comment.legacy_reply_count = max(0, historical_reply_count)
+        created_at = _media_created_at(resource, None)
+        if created_at is not None:
+            comment.ctime = created_at
         ip_address = _string(spec.get("ipAddress"))
         if ip_address:
             comment.ip_hash = hashlib.sha256(ip_address.encode("utf-8")).hexdigest()
@@ -698,6 +750,54 @@ async def _import_statistics(session, resources: list[dict[str, object]], locale
     for resource in resources:
         spec = resource["spec"]
         assert isinstance(spec, dict)
+        resource_name = str(resource.get("resource_name") or "")
+        # Counter metadata names are `posts.content.halo.run/<source-id>`;
+        # imported posts/pages retain only the final Halo source identifier.
+        source_id = str(resource.get("source_id") or "").rsplit("/", 1)[-1]
+        # Halo stores its historical per-content counters as independent
+        # resources instead of daily statistics.  Persist those counters on a
+        # reserved historic day so they contribute to both the site total and
+        # each migrated content item's displayed visit count.  Assigning the
+        # value (rather than incrementing) keeps this operation idempotent.
+        if "/counters/" in resource_name:
+            target = None
+            path = None
+            if "/counters/posts.content.halo.run/" in resource_name:
+                target = await session.scalar(
+                    select(Post).where(
+                        Post.source_platform == "halo",
+                        Post.source_id == source_id,
+                        Post.locale == locale,
+                        Post.isvalid.is_(True),
+                    )
+                )
+                path = f"/archives/{target.slug}" if target else None
+            elif "/counters/singlepages.content.halo.run/" in resource_name:
+                target = await session.scalar(
+                    select(Page).where(
+                        Page.source_platform == "halo",
+                        Page.source_id == source_id,
+                        Page.locale == locale,
+                        Page.isvalid.is_(True),
+                    )
+                )
+                path = f"/{target.slug}" if target else None
+            if path:
+                item = await session.scalar(
+                    select(VisitDaily).where(
+                        VisitDaily.stat_date == date(1970, 1, 1),
+                        VisitDaily.path == path,
+                        VisitDaily.locale == locale,
+                    )
+                )
+                if item is None:
+                    item = VisitDaily(
+                        stat_date=date(1970, 1, 1), path=path, locale=locale
+                    )
+                    session.add(item)
+                    imported += 1
+                item.page_views = max(0, _integer(spec.get("visit")))
+            continue
         stat_date = _string(spec.get("statDate") or spec.get("date"))
         path = _string(spec.get("path") or spec.get("uri"))
         if not stat_date or not path:
@@ -721,6 +821,35 @@ async def _import_statistics(session, resources: list[dict[str, object]], locale
     return imported
 
 
+async def _apply_site_view_total(
+    session, *, locale: str, total: int
+) -> int:
+    """Retain a newer old-site total when a backup predates its visible counter."""
+    adjustment_path = "/__legacy_halo_site_total_adjustment__"
+    imported_total = await session.scalar(
+        select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
+            VisitDaily.locale == locale,
+            VisitDaily.isvalid.is_(True),
+            VisitDaily.path != adjustment_path,
+        )
+    )
+    adjustment = max(0, total - int(imported_total or 0))
+    item = await session.scalar(
+        select(VisitDaily).where(
+            VisitDaily.stat_date == date(1970, 1, 1),
+            VisitDaily.path == adjustment_path,
+            VisitDaily.locale == locale,
+        )
+    )
+    if item is None:
+        item = VisitDaily(stat_date=date(1970, 1, 1), path=adjustment_path, locale=locale)
+        session.add(item)
+    item.page_views = adjustment
+    item.unique_visitors = 0
+    item.sessions = 0
+    return adjustment
+
+
 async def run(args: argparse.Namespace) -> None:
     archive = args.archive.resolve()
     if not archive.is_file():
@@ -735,6 +864,14 @@ async def run(args: argparse.Namespace) -> None:
         auxiliary = read_halo_workdir_bundle_path(str(archive))
         candidates = auxiliary.candidates
         taxonomy = auxiliary.taxonomy
+    if args.statistics_only and args.reset_database:
+        raise SystemExit("--statistics-only 不能与 --reset-database 一起使用。")
+    if args.statistics_only and auxiliary is None:
+        raise SystemExit("--statistics-only 仅支持包含 extensions.data 的 Halo 运行目录备份。")
+    if args.site_view_total is not None and not args.statistics_only:
+        raise SystemExit("--site-view-total 必须与 --statistics-only 一起使用。")
+    if args.site_view_total is not None and args.site_view_total < 0:
+        raise SystemExit("--site-view-total 不能小于 0。")
     async with SessionLocal() as session:
         if args.reset_database:
             if not args.confirm_reset:
@@ -765,62 +902,72 @@ async def run(args: argparse.Namespace) -> None:
             source_version="v2",
             source_file_name=archive.name,
             state="running",
-            total_count=len(candidates),
+            total_count=len(auxiliary.statistics) if args.statistics_only and auxiliary else len(candidates),
             created_by=author.id,
         )
         session.add(job)
         await session.flush()
         write_taxonomy = args.import_taxonomy or args.reset_database
         write_navigation = args.import_navigation or args.reset_database
-        if write_taxonomy:
+        if write_taxonomy and not args.statistics_only:
             await _prepare_taxonomy(session, args.locale, taxonomy)
-        for candidate in candidates:
-            try:
-                imported = await _write_candidate(
-                    session,
-                    job,
-                    author,
-                    candidate,
-                    args.locale,
-                    args.update_existing,
-                    taxonomy,
-                    write_taxonomy,
-                )
-                job.success_count += int(imported)
-            except Exception as exc:
-                session.add(
-                    ImportItem(
-                        job_id=job.id,
-                        source_id=candidate.source_id,
-                        source_url=candidate.source_url,
-                        target_type=candidate.kind,
-                        target_slug=candidate.slug,
-                        state="failed",
-                        error_message=str(exc)[:1000],
+        if not args.statistics_only:
+            for candidate in candidates:
+                try:
+                    imported = await _write_candidate(
+                        session,
+                        job,
+                        author,
+                        candidate,
+                        args.locale,
+                        args.update_existing,
+                        taxonomy,
+                        write_taxonomy,
                     )
-                )
-                job.failure_count += 1
+                    job.success_count += int(imported)
+                except Exception as exc:
+                    session.add(
+                        ImportItem(
+                            job_id=job.id,
+                            source_id=candidate.source_id,
+                            source_url=candidate.source_url,
+                            target_type=candidate.kind,
+                            target_slug=candidate.slug,
+                            state="failed",
+                            error_message=str(exc)[:1000],
+                        )
+                    )
+                    job.failure_count += 1
         auxiliary_counts: dict[str, int] = {}
         if auxiliary is not None:
-            auxiliary_counts["site_properties"] = await _import_site_properties(
-                session, auxiliary.site_settings
-            )
-            auxiliary_counts["attachments"] = await _import_media_and_galleries(
-                session, auxiliary.attachments, auxiliary.attachment_groups, args.locale
-            )
-            if write_navigation:
-                auxiliary_counts["navigation"] = await _import_navigation(
-                    session, auxiliary.menu_items, args.locale
+            if args.statistics_only:
+                auxiliary_counts["statistics"] = await _import_statistics(
+                    session, auxiliary.statistics, args.locale
                 )
-            auxiliary_counts["friend_links"] = await _import_friend_links(
-                session, auxiliary.friend_links, args.locale
-            )
-            auxiliary_counts["comments"] = await _import_comments(
-                session, auxiliary.comments, author, args.locale
-            )
-            auxiliary_counts["statistics"] = await _import_statistics(
-                session, auxiliary.statistics, args.locale
-            )
+                if args.site_view_total is not None:
+                    auxiliary_counts["site_view_adjustment"] = await _apply_site_view_total(
+                        session, locale=args.locale, total=args.site_view_total
+                    )
+            else:
+                auxiliary_counts["site_properties"] = await _import_site_properties(
+                    session, auxiliary.site_settings
+                )
+                auxiliary_counts["attachments"] = await _import_media_and_galleries(
+                    session, auxiliary.attachments, auxiliary.attachment_groups, args.locale
+                )
+                if write_navigation:
+                    auxiliary_counts["navigation"] = await _import_navigation(
+                        session, auxiliary.menu_items, args.locale
+                    )
+                auxiliary_counts["friend_links"] = await _import_friend_links(
+                    session, auxiliary.friend_links, args.locale
+                )
+                auxiliary_counts["comments"] = await _import_comments(
+                    session, auxiliary.comments, author, args.locale
+                )
+                auxiliary_counts["statistics"] = await _import_statistics(
+                    session, auxiliary.statistics, args.locale
+                )
         job.state = "completed" if job.failure_count == 0 else "failed"
         job.completed_at = datetime.now(UTC)
         await session.commit()
