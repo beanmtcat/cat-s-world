@@ -300,6 +300,13 @@
   }
 }
 
+/* Homepage primary column: use the geometric display face for Latin text and
+   figures, while Chinese continues to fall back to Noto Sans SC. */
+.appShell .hero :is(.eyebrow,h1,.intro,.stats,.actions),
+.appShell .main .homePrimary :is(.catCard,.heading,.post,.quote){font-family:"Space Grotesk","Noto Sans SC","Microsoft YaHei",sans-serif}
+.appShell .hero .stats .statValue{font-family:"Space Grotesk",sans-serif!important;font-weight:700!important;letter-spacing:-.065em!important}
+.appShell .hero .stats span{font-variant-numeric:tabular-nums}
+
 /* Account and studio are app screens; their styles are intentionally isolated
    from the public-homepage visual system above. */
 .authPage,.studioShell{--studio-ink:#e9f5ff;--studio-muted:#92acc2;--studio-line:#1d506c;--studio-card:#08283b;--studio-accent:#12b9f4;background:#031826;color:var(--studio-ink);min-height:100vh}
