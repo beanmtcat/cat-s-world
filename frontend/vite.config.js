@@ -6,11 +6,12 @@ import { defineConfig, loadEnv } from 'vite';
 function contentSecurityPolicy(apiOrigin) {
   const policy = [
     "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' https://ip.hzcat.com",
+    // style.css @imports Noto Sans SC / Space Grotesk from Google Fonts.
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' https: http: data: blob:",
     "media-src 'self' https: http:",
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src 'self' ${apiOrigin}`.trim(),
     "object-src 'none'",
     "base-uri 'self'",

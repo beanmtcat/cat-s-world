@@ -10,12 +10,7 @@ backend/.ruff_cache/
 *.py[cod]
 .DS_Store
 .env
-content/imports/*
-!content/imports/.gitkeep
-content/exports/*
-!content/exports/.gitkeep
-content/backups/*
-!content/backups/.gitkeep
+content/*
 
 
 data/*
