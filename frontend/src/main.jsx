@@ -28,6 +28,7 @@ import { ApiError, authApi, contentApi, rssFeedUrl } from './api/client';
 import hljs from 'highlight.js/lib/common';
 import DOMPurify from 'dompurify';
 import './style.css';
+import './mobile.css';
 
 const StudioApp = React.lazy(() => import('./studio').then((module) => ({ default: module.StudioApp })));
 
@@ -198,7 +199,19 @@ function HeaderSearch({ navigate }) {
   };
 
   return (
-    <form className="search navSearch" ref={rootRef} onSubmit={submit} role="search">
+    <form
+      className={`search navSearch${open ? ' isOpen' : ''}`}
+      ref={rootRef}
+      onSubmit={submit}
+      role="search"
+      // On phones the box collapses to an icon; any tap on it should open the search field.
+      onClick={() => {
+        if (!open) {
+          setOpen(true);
+          inputRef.current?.focus();
+        }
+      }}
+    >
       <Search size={16} />
       <input
         ref={inputRef}
@@ -216,6 +229,19 @@ function HeaderSearch({ navigate }) {
         autoComplete="off"
       />
       <kbd>⌘ K</kbd>
+      {open && (
+        <button
+          type="button"
+          className="searchCancel"
+          onClick={(event) => {
+            event.stopPropagation();
+            setQuery('');
+            close();
+          }}
+        >
+          取消
+        </button>
+      )}
       {open && (
         <div className="searchPanel" id="header-search-panel">
           <div className="searchPanelHead">
@@ -579,7 +605,11 @@ function StatusPanel({ statusNodes = [] }) {
       <div className="statusNodeViewport">
         <div className={statusNodes.length > 1 ? 'statusNodeTrack isLooping' : 'statusNodeTrack'}>
           {loopNodes.map((item, index) => (
-            <p key={`${item.id}-${index}`}>
+            <p
+              key={`${item.id}-${index}`}
+              className={index >= statusNodes.length ? 'statusNodeDuplicate' : undefined}
+              aria-hidden={index >= statusNodes.length}
+            >
               <i className="statusDot" aria-hidden="true" />
               {item.name}
               <span>{item.latencyMs == null ? '待检测' : `${item.latencyMs} ms`}</span>
@@ -724,11 +754,12 @@ function Footer({ navigation = [], navigate }) {
     };
   }, []);
   const domain = window.location.hostname.toLowerCase();
-  const filing = domain === 'mmcat.cn' || domain === 'www.mmcat.cn'
-    ? { icp: '浙ICP备15008243号-1', police: '33010602012461' }
-    : domain === 'hzcat.com' || domain === 'www.hzcat.com'
-      ? { icp: '浙ICP备2024065820号-2', police: '33010602013467' }
-      : { icp: '浙ICP备2024065820号-1', police: '33010602013467' };
+  const filing =
+    domain === 'mmcat.cn' || domain === 'www.mmcat.cn'
+      ? { icp: '浙ICP备15008243号-1', police: '33010602012461' }
+      : domain === 'hzcat.com' || domain === 'www.hzcat.com'
+        ? { icp: '浙ICP备2024065820号-2', police: '33010602013467' }
+        : { icp: '浙ICP备2024065820号-1', police: '33010602013467' };
   const follow = (event, item) => {
     if (item.openNewTab || !item.url.startsWith('/')) return;
     event.preventDefault();
@@ -755,7 +786,13 @@ function Footer({ navigation = [], navigate }) {
           )}
         </nav>
         <span className="footerSocial" aria-label="社交链接">
-          <a href="https://github.com/beanmtcat/cat-s-world" target="_blank" rel="noopener noreferrer" aria-label="GitHub：cat-s-world" title="查看 GitHub 仓库">
+          <a
+            href="https://github.com/beanmtcat/cat-s-world"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub：cat-s-world"
+            title="查看 GitHub 仓库"
+          >
             <img className="footerGithub" src="https://api.iconify.design/tabler:brand-github.svg?color=%239ab7cb" alt="GitHub" />
           </a>
           <a href={rssFeedUrl} aria-label="订阅 RSS" title="订阅 RSS">
@@ -779,8 +816,17 @@ function Footer({ navigation = [], navigate }) {
         )}
         {visitorLocation?.areaCode === 'CN' && (
           <span className="footerFiling">
-            <a className="icpRecord" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{filing.icp}</a>
-            <a className="icpRecord" href={`https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=${filing.police}`} target="_blank" rel="noopener noreferrer">浙公网安备 {filing.police}号</a>
+            <a className="icpRecord" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
+              {filing.icp}
+            </a>
+            <a
+              className="icpRecord"
+              href={`https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=${filing.police}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              浙公网安备 {filing.police}号
+            </a>
           </span>
         )}
         <span className="footerSlogan">用技术让生活更有趣。</span>

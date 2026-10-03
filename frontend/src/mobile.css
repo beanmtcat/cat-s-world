@@ -1,0 +1,895 @@
+/*
+ * Phone layout (≤ 767px).
+ * Loaded after style.css, whose many layered `!important` rules are why these
+ * selectors carry `.appShell` and `!important` as well.  Shared tokens keep the
+ * pages visually consistent: 16px gutters, 14px card radius, one card surface.
+ */
+.searchCancel {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .appShell {
+    --m-gutter: 16px;
+    --m-radius: 14px;
+    --m-surface: linear-gradient(160deg, rgba(12, 44, 64, 0.94), rgba(6, 26, 40, 0.94));
+    --m-line: rgba(64, 132, 168, 0.32);
+    --m-ink: #eef8ff;
+    --m-muted: #93b2c4;
+    --m-accent: #4cc6f6;
+    overflow-x: clip !important;
+  }
+  .appShell.lightsOn {
+    --m-surface: linear-gradient(160deg, #ffffff, #f4f9fd);
+    --m-line: #d3e4ee;
+    --m-ink: #173247;
+    --m-muted: #5f7d91;
+    --m-accent: #2584ba;
+  }
+
+  .appShell .wrap {
+    width: 100% !important;
+    max-width: none !important;
+    padding-right: var(--m-gutter) !important;
+    padding-left: var(--m-gutter) !important;
+  }
+
+  /* ---------- Header ---------- */
+  .appShell .siteHeader,
+  .appShell .siteHeader .nav {
+    height: 60px !important;
+  }
+  .appShell .siteHeader {
+    position: sticky !important;
+    top: 0 !important;
+    padding-top: env(safe-area-inset-top);
+  }
+  .appShell .siteHeader .nav {
+    padding-right: var(--m-gutter) !important; /* style.css reserves 54px for an absolute menu button */
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  .appShell .siteHeader .brandAnchor {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    margin-right: auto !important;
+  }
+  .appShell .siteHeader .brandDivider,
+  .appShell .siteHeader .localeUnavailable,
+  .appShell .siteHeader .localeButton,
+  .appShell .siteHeader .navSearch kbd {
+    display: none !important;
+  }
+  .appShell .siteHeader .navActions,
+  .appShell .siteHeader .mobileMenu {
+    /* z-index on flex items creates stacking contexts that would trap the open search bar below the menu button. */
+    z-index: auto !important;
+  }
+  .appShell .siteHeader .navActions {
+    position: static !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+  }
+  .appShell .siteHeader .mobileMenu {
+    position: static !important;
+    margin: 0 !important;
+  }
+  /* One button language for every header control. */
+  .appShell .siteHeader .navSearch,
+  .appShell .siteHeader .themeButton,
+  .appShell .siteHeader .profileButton,
+  .appShell .siteHeader .mobileMenu {
+    display: grid !important;
+    place-items: center !important;
+    flex: 0 0 38px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1px solid var(--m-line) !important;
+    border-radius: 11px !important;
+    background: rgba(13, 42, 62, 0.72) !important;
+    color: var(--m-ink) !important;
+    box-shadow: none !important;
+  }
+  .appShell.lightsOn .siteHeader .navSearch,
+  .appShell.lightsOn .siteHeader .themeButton,
+  .appShell.lightsOn .siteHeader .profileButton,
+  .appShell.lightsOn .siteHeader .mobileMenu {
+    background: #fff !important;
+  }
+  .appShell .siteHeader .navSearch svg {
+    margin: 0 !important;
+  }
+  .appShell .siteHeader .loginButton {
+    height: 38px !important;
+    min-height: 38px !important;
+    margin: 0 !important;
+    padding: 0 14px !important;
+    border-radius: 11px !important;
+    font-size: 13px !important;
+  }
+  .appShell .siteHeader .profileButton img,
+  .appShell .siteHeader .profileButton span {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 9px !important;
+  }
+
+  /* Search: the icon expands into a full-width bar over the header. */
+  .appShell .siteHeader .navSearch.isOpen {
+    position: fixed !important;
+    z-index: 90 !important;
+    top: calc(11px + env(safe-area-inset-top)) !important;
+    right: var(--m-gutter) !important;
+    left: var(--m-gutter) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 9px !important;
+    width: auto !important;
+    padding: 0 6px 0 12px !important;
+    border-color: var(--m-accent) !important;
+    background: #082236 !important;
+  }
+  .appShell.lightsOn .siteHeader .navSearch.isOpen {
+    background: #fff !important;
+  }
+  /* Collapsed: the input is an invisible layer over the icon, so a tap focuses it
+     directly (opening the keyboard) instead of relying on a scripted focus. */
+  .appShell .siteHeader .navSearch {
+    position: relative !important;
+  }
+  .appShell .siteHeader .navSearch input {
+    display: block !important; /* style.css hides it on phones, which also made it unfocusable */
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    font-size: 16px !important;
+    cursor: pointer;
+  }
+  .appShell .siteHeader .navSearch.isOpen input {
+    position: static !important;
+    height: auto !important;
+    opacity: 1 !important;
+    cursor: text;
+    display: block !important;
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    font-size: 16px !important; /* ≥16px stops iOS from zooming on focus */
+  }
+  .appShell .siteHeader .navSearch.isOpen .searchCancel {
+    display: block;
+    flex: 0 0 auto;
+    height: 28px;
+    padding: 0 8px;
+    border: 0;
+    background: transparent;
+    color: var(--m-accent);
+    font: 500 14px inherit;
+  }
+  .appShell .searchPanel {
+    position: fixed !important;
+    top: calc(58px + env(safe-area-inset-top)) !important;
+    right: var(--m-gutter) !important;
+    left: var(--m-gutter) !important;
+    width: auto !important;
+    max-width: none !important;
+    border-radius: var(--m-radius) !important;
+    background: #071b2a !important;
+    box-shadow:
+      0 0 0 100vmax rgba(2, 10, 17, 0.55),
+      0 18px 40px rgba(0, 0, 0, 0.4) !important; /* dims the page behind */
+  }
+  .appShell.lightsOn .searchPanel {
+    background: #fff !important;
+    box-shadow:
+      0 0 0 100vmax rgba(23, 50, 71, 0.25),
+      0 18px 40px rgba(61, 101, 128, 0.2) !important;
+  }
+  .appShell .searchPanel ul {
+    max-height: calc(100vh - 170px) !important;
+  }
+  .appShell .searchPanelItem {
+    padding: 11px 8px !important;
+    font-size: 14px !important;
+  }
+
+  /* Menu: a sheet under the header with a two-column grid of destinations. */
+  .appShell .siteHeader .primaryNav.mobileOpen {
+    position: fixed !important;
+    z-index: 85 !important;
+    top: calc(60px + env(safe-area-inset-top)) !important;
+    right: 0 !important;
+    left: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 12px var(--m-gutter) 16px !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--m-line) !important;
+    border-radius: 0 0 18px 18px !important;
+    background: #061928 !important;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35) !important;
+    backdrop-filter: blur(16px);
+  }
+  .appShell.lightsOn .siteHeader .primaryNav.mobileOpen {
+    background: rgba(255, 255, 255, 0.98) !important;
+    box-shadow: 0 18px 40px rgba(61, 101, 128, 0.18) !important;
+  }
+  .appShell .siteHeader .primaryNav.mobileOpen .navMenuEntry {
+    min-width: 0 !important;
+  }
+  .appShell .siteHeader .primaryNav.mobileOpen a {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: 100% !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 14px !important;
+    border: 1px solid var(--m-line) !important;
+    border-radius: 12px !important;
+    background: var(--m-surface) !important;
+    color: var(--m-ink) !important;
+    font-size: 14px !important;
+  }
+  .appShell .siteHeader .primaryNav.mobileOpen a .navIcon {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  .appShell .siteHeader .primaryNav.mobileOpen a::after,
+  .appShell .siteHeader .primaryNav.mobileOpen .navSubmenu {
+    display: none !important;
+  }
+
+  /* ---------- Home hero ---------- */
+  .appShell .hero.hero.hero.hero.hero {
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: 28px !important;
+    overflow: hidden !important;
+  }
+  .appShell .hero.hero.hero.hero .heroArt,
+  .appShell.lightsOn .hero.hero.hero.hero .heroArt {
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    transform: none !important;
+    background-size: cover !important;
+    background-position: 72% bottom !important;
+    opacity: 0.55;
+  }
+  .appShell .hero.hero.hero.hero .wash {
+    inset: 0 !important;
+    height: auto !important;
+    background: linear-gradient(180deg, rgba(4, 21, 34, 0.92) 0%, rgba(4, 21, 34, 0.78) 55%, rgba(4, 21, 34, 0.94) 100%) !important;
+  }
+  .appShell.lightsOn .hero.hero.hero.hero .wash {
+    background: linear-gradient(
+      180deg,
+      rgba(244, 249, 253, 0.95) 0%,
+      rgba(244, 249, 253, 0.82) 55%,
+      rgba(244, 249, 253, 0.96) 100%
+    ) !important;
+  }
+  .appShell .heroText {
+    position: relative !important;
+    max-width: none !important;
+    padding-top: 30px !important;
+  }
+  .appShell .hero .eyebrow {
+    margin: 0 0 10px !important;
+    font-size: 12px !important;
+    letter-spacing: 0.06em !important;
+  }
+  .appShell .hero h1 {
+    margin: 0 0 12px !important;
+    font-size: clamp(31px, 9vw, 38px) !important;
+    line-height: 1.18 !important;
+    letter-spacing: -0.04em !important;
+  }
+  .appShell .hero .intro {
+    margin: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.75 !important;
+  }
+  .appShell .hero .intro br {
+    display: none;
+  }
+  .appShell .hero .stats,
+  .appShell.lightsOn .hero .stats {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 0 8px !important;
+    width: 100% !important;
+    margin: 22px 0 22px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none;
+  }
+  .appShell .hero .stats span,
+  .appShell .hero .stats span:first-child,
+  .appShell .hero .stats span:nth-child(4),
+  .appShell.lightsOn .hero .stats span {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--m-muted) !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    white-space: nowrap !important;
+  }
+  .appShell .hero .stats span::before,
+  .appShell .hero .stats span::after {
+    display: none !important;
+  }
+  .appShell .hero .stats b {
+    margin: 0 !important;
+    font-size: 21px !important;
+    line-height: 1.1 !important;
+  }
+  .appShell .hero .actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+  .appShell .hero .actions button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 46px !important;
+    margin: 0 !important;
+    padding: 0 10px !important;
+    border-radius: 12px !important;
+    font-size: 14px !important;
+    white-space: nowrap !important;
+  }
+  .appShell .hero .actions button + button {
+    border: 1px solid var(--m-line) !important;
+    background: rgba(8, 34, 52, 0.72) !important;
+    color: var(--m-ink) !important;
+    box-shadow: none !important;
+  }
+  .appShell.lightsOn .hero .actions button + button {
+    background: #fff !important;
+  }
+
+  /* ---------- Home: categories ---------- */
+  .appShell .categoryArea {
+    margin-top: 0 !important;
+    padding-top: 0 !important; /* .main already provides the top spacing */
+    border-top: 0 !important;
+  }
+  .appShell .categoryArea .cats {
+    display: flex !important;
+    gap: 10px !important;
+    height: auto !important;
+    margin: 0 calc(-1 * var(--m-gutter)) !important;
+    padding: 2px var(--m-gutter) 6px !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--m-gutter);
+    scrollbar-width: none;
+  }
+  .appShell .categoryArea .cats::-webkit-scrollbar {
+    display: none;
+  }
+  .appShell .categoryArea .cats .catCard,
+  .appShell .categoryArea .cats .catCard.feature,
+  .appShell.lightsOn .categoryArea .cats .catCard,
+  .appShell.lightsOn .categoryArea .cats .catCard.feature {
+    flex: 1 0 74px !important; /* grow to fill the row; overflow scrolls when there are many */
+    width: auto !important;
+    height: auto !important;
+    padding: 4px 0 !important;
+    gap: 5px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    scroll-snap-align: start;
+  }
+  .appShell .categoryArea .cats .catCard.feature b {
+    color: #d38cf6 !important;
+  }
+  .appShell.lightsOn .categoryArea .cats .catCard.feature b {
+    color: #8a4fc4 !important;
+  }
+  .appShell .categoryArea .cats .catCard > .categoryIcon,
+  .appShell .categoryArea .cats .catCard > .categoryIcon.is-linux,
+  .appShell .categoryArea .cats .catCard > .categoryIcon.is-container {
+    width: 32px !important;
+    height: 32px !important;
+    margin: 0 !important;
+  }
+  .appShell .categoryArea .cats .catCard b {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    font-size: 12px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .appShell .categoryArea .cats .catCard small {
+    font-size: 11px !important;
+  }
+  .appShell .categoryArea .cats .catCard small .arrow {
+    display: none !important;
+  }
+
+  /* ---------- Home: latest posts ---------- */
+  .appShell .main {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 22px !important;
+    padding-top: 22px !important;
+  }
+  .appShell .main .homePrimary {
+    display: grid !important;
+    gap: 0 !important;
+    min-width: 0 !important;
+  }
+  .appShell .main .heading {
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 0 12px !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+  .appShell .main .heading h2 {
+    font-size: 18px !important;
+  }
+  .appShell .main .heading a {
+    font-size: 13px !important;
+  }
+  .appShell .main .posts {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: auto !important; /* desktop rules make every card as tall as the tallest */
+    align-items: start !important;
+    gap: 12px !important;
+  }
+  /* Every post is a compact row: text left, square thumbnail right. */
+  .appShell .main .post {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 92px !important;
+    grid-template-areas: 'title cover' 'summary cover' 'meta meta' !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important; /* plain 1fr grows to the unclamped summary height */
+    column-gap: 14px !important;
+    row-gap: 6px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 14px !important;
+    border: 1px solid var(--m-line) !important;
+    border-radius: var(--m-radius) !important;
+    background: var(--m-surface) !important;
+    box-shadow: none !important;
+  }
+  .appShell .main .post .cover {
+    grid-area: cover !important;
+    align-self: start !important;
+    width: 92px !important;
+    height: 92px !important;
+    margin: 0 !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+  }
+  .appShell .main .post .cover .coverImage {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+  .appShell .main .post .coverBadge,
+  .appShell .main .post .tags {
+    display: none !important;
+  }
+  .appShell .main .post h2 {
+    grid-area: title !important;
+    display: -webkit-box !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    font-size: 16px !important;
+    line-height: 1.42 !important;
+    /* Grid rows size from unclamped text; cap the height so two lines really means two lines. */
+    max-height: calc(2 * 1.42em) !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .appShell .main .post > p {
+    grid-area: summary !important;
+    display: -webkit-box !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    color: var(--m-muted) !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    max-height: calc(2 * 1.6em) !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .appShell .main .post footer {
+    grid-area: meta !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 4px 0 0 !important;
+    padding: 10px 0 0 !important;
+    border-top: 1px solid var(--m-line) !important;
+    color: var(--m-muted) !important;
+    font-size: 12px !important;
+  }
+  .appShell .main .post footer span:first-child {
+    margin-right: auto !important;
+  }
+  .appShell .main .post footer svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  .appShell .main .quote {
+    display: none !important;
+  }
+
+  /* ---------- Home: side panels ---------- */
+  /* Status, AI tools and tag cloud are desktop-only; phones keep just the journey card. */
+  .appShell .main aside > .status,
+  .appShell .main aside > .panel,
+  .appShell .categoryArea .status {
+    display: none !important;
+  }
+  .appShell .main aside {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+    min-width: 0 !important;
+    padding-bottom: 28px !important;
+  }
+  .appShell .main aside > .journey {
+    height: auto !important;
+    min-height: 76px !important;
+    border-radius: var(--m-radius) !important;
+  }
+
+  /* ---------- Listing / tags / tools / links headers ---------- */
+  .appShell .listingPage,
+  .appShell .toolsPage,
+  .appShell .tagIndexPage {
+    padding-top: 26px !important;
+    padding-bottom: 40px !important;
+  }
+  .appShell .listingHead h1,
+  .appShell .toolsPage > header h1,
+  .appShell .tagIndexPage > header h1 {
+    font-size: 28px !important;
+    line-height: 1.2 !important;
+  }
+  .appShell .toolsPage > header,
+  .appShell .tagIndexPage > header {
+    margin-bottom: 18px !important;
+    padding-bottom: 16px !important;
+  }
+  .appShell .toolsPage > header span,
+  .appShell .tagIndexPage > header span,
+  .appShell .listingHead span {
+    font-size: 13px !important;
+  }
+  .appShell .listingLayout {
+    display: block !important;
+  }
+  .appShell .publicSidebar {
+    display: none !important;
+  }
+  .appShell .listRow {
+    border-radius: var(--m-radius) !important;
+  }
+  .appShell .listingPagination {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 6px !important;
+  }
+
+  /* Tools & friend links: compact cards. */
+  .appShell .toolFilters {
+    flex-wrap: nowrap !important;
+    margin: 0 calc(-1 * var(--m-gutter)) 14px !important;
+    padding: 0 var(--m-gutter) 2px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none;
+  }
+  .appShell .toolFilters::-webkit-scrollbar {
+    display: none;
+  }
+  .appShell .toolFilters button {
+    flex: 0 0 auto !important;
+  }
+  .appShell .toolGrid,
+  .appShell .friendGrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+  .appShell .toolCard,
+  .appShell .friendCard {
+    gap: 10px !important;
+    min-height: 0 !important;
+    padding: 14px !important;
+    border-radius: var(--m-radius) !important;
+  }
+  .appShell .toolCardIcon {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .appShell .toolCard p {
+    -webkit-line-clamp: 1 !important;
+  }
+  .appShell .toolCardFoot {
+    padding-top: 10px !important;
+  }
+  .appShell .friendAvatar {
+    width: 46px !important;
+    height: 46px !important;
+  }
+  .appShell .friendCard p {
+    min-height: 0 !important;
+    padding-top: 10px !important;
+    -webkit-line-clamp: 1 !important;
+  }
+
+  /* ---------- Article & standalone pages ---------- */
+  .appShell .articlePage {
+    padding-top: 18px !important;
+    padding-bottom: 36px !important;
+  }
+  .appShell .articleLayout {
+    display: block !important;
+  }
+  .appShell .articleLeftRail,
+  .appShell .articleRightRail {
+    display: none !important;
+  }
+  .appShell .articleDocument {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .appShell .articleDocument .backButton {
+    height: 34px !important;
+    margin: 0 0 16px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+  }
+  .appShell .articleDocument h1 {
+    margin: 0 0 12px !important;
+    font-size: 25px !important;
+    line-height: 1.32 !important;
+    letter-spacing: -0.02em !important;
+    word-break: break-word;
+  }
+  .appShell .articleDocument .articleMeta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px 16px !important;
+    margin-bottom: 12px !important;
+    font-size: 12px !important;
+  }
+  .appShell .articleTaxonomy {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    margin-bottom: 18px !important;
+  }
+  .appShell .articleCover {
+    width: 100% !important;
+    max-height: 220px !important;
+    margin-bottom: 18px !important;
+    border-radius: var(--m-radius) !important;
+    object-fit: cover !important;
+  }
+  .appShell .articleBody {
+    min-width: 0 !important;
+    font-size: 16px !important;
+    line-height: 1.85 !important;
+    overflow-wrap: anywhere;
+  }
+  .appShell .articleBody p {
+    margin: 0 0 1em !important;
+  }
+  .appShell .articleBody h2,
+  .appShell .articleBody h3,
+  .appShell .articleBody h4 {
+    margin: 1.6em 0 0.6em !important;
+    font-size: 19px !important;
+    line-height: 1.4 !important;
+  }
+  .appShell .articleBody h3,
+  .appShell .articleBody h4 {
+    font-size: 17px !important;
+  }
+  .appShell .articleBody img,
+  .appShell .articleBody .articleInlineImage {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 10px !important;
+  }
+  .appShell .articleBody pre {
+    max-width: 100% !important;
+    margin: 0 0 1.2em !important;
+    padding: 12px 14px !important;
+    overflow-x: auto !important;
+    border: 1px solid var(--m-line) !important;
+    border-radius: 12px !important;
+    background: #061521 !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    overflow-wrap: normal;
+    -webkit-overflow-scrolling: touch;
+  }
+  .appShell.lightsOn .articleBody pre {
+    background: #f3f8fb !important;
+  }
+  .appShell .articleBody code {
+    overflow-wrap: anywhere;
+  }
+  .appShell .articleBody pre code {
+    overflow-wrap: normal;
+    white-space: pre !important;
+  }
+  .appShell .articleTableWrap,
+  .appShell .htmlArticleBody table {
+    display: block !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
+  .appShell .articleTableWrap table {
+    min-width: 100% !important;
+    font-size: 13px !important;
+  }
+  .appShell .articleComments {
+    margin-top: 30px !important;
+  }
+  .appShell .commentForm textarea {
+    font-size: 16px !important;
+  }
+
+  /* ---------- Galleries ---------- */
+  .appShell .photoGalleryPage {
+    padding: 10px 10px 32px !important;
+  }
+  .appShell .photoWall {
+    gap: 6px !important;
+    column-gap: 6px !important;
+    row-gap: 6px !important;
+    padding: 0 !important;
+  }
+  .appShell .photoTile {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+  }
+  .appShell .photoTile img {
+    display: block !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+  }
+  .appShell .photoTile b {
+    display: none !important; /* captions are upload file names on most images */
+  }
+
+  /* ---------- Footer ---------- */
+  .appShell footer .foot,
+  .appShell footer .copyright {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px 16px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding-top: 18px !important;
+    padding-bottom: 18px !important;
+    text-align: center !important;
+  }
+  .appShell footer .foot nav,
+  .appShell footer .footerMenu {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    width: 100% !important;
+    gap: 6px 14px !important;
+  }
+  .appShell footer .copyright {
+    padding-bottom: calc(22px + env(safe-area-inset-bottom)) !important;
+    font-size: 12px !important;
+    line-height: 1.7 !important;
+  }
+  .appShell footer .copyright > * {
+    width: 100% !important;
+    margin: 0 !important;
+    justify-content: center !important;
+  }
+
+  .appShell .backToTop {
+    right: var(--m-gutter) !important;
+    bottom: calc(18px + env(safe-area-inset-bottom)) !important;
+    width: 44px !important;
+    height: 44px !important;
+  }
+}
+
+@media (max-width: 359px) {
+  .appShell .siteHeader .themeButton {
+    display: none !important;
+  }
+  .appShell .hero .stats,
+  .appShell.lightsOn .hero .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px 10px !important;
+  }
+  .appShell .hero .actions {
+    grid-template-columns: 1fr !important;
+  }
+  .appShell .main .post {
+    grid-template-columns: minmax(0, 1fr) 76px !important;
+  }
+  .appShell .main .post .cover {
+    width: 76px !important;
+    height: 76px !important;
+  }
+}
+
+/*
+ * Up to 1024px the home sidebar drops below the article list (style.css), where
+ * status, AI tools and the tag cloud just add length; the phone rules above only
+ * covered ≤ 767px, so tablet widths still showed the status panel.
+ */
+@media (max-width: 1024px) {
+  .appShell .main aside > .status,
+  .appShell .main aside > .panel {
+    display: none !important;
+  }
+}
+
+/* Tablet widths: style.css drops the hero to three stats and hides "站点访问量"; keep all four. */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .appShell .hero .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  .appShell .hero .stats span:nth-child(4) {
+    display: grid !important;
+  }
+  /* style.css stacks 34px main padding on top of 10px category padding here. */
+  .appShell .main {
+    padding-top: 18px !important;
+  }
+  .appShell .categoryArea {
+    padding-top: 0 !important;
+  }
+}
