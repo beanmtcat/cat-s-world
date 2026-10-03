@@ -1,0 +1,9 @@
+# Server-specific configuration and secrets stay out of Git.
+/.env
+/.env.*
+!/.env.example
+/compose.yaml
+/compose.yml
+/docker-compose.yml
+/secrets/
+/backups/

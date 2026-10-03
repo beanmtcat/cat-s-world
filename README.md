@@ -33,4 +33,10 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-Docker 化 PostgreSQL、Redis、MinIO 与 API 的基线在 `docker-compose.yml`；执行前同样需要创建 `backend/.env`。完整功能进度以 [系统设计](docs/系统设计.md) 的 P0/P1 清单为准，未完成项不会标记为已交付。
+Docker 化 PostgreSQL、Redis、MinIO、API 与前端的部署模板在 `deploy/docker-compose.example.yml`；部署前需要准备 `deploy/.env`。完整功能进度以 [系统设计](docs/系统设计.md) 的 P0/P1 清单为准，未完成项不会标记为已交付。
+
+## 首次导入生产数据库
+
+先在本地 `deploy/` 目录准备生产 `.env` 和 `docker-compose.yml`，并在生产服务器创建项目目录。在 `deploy/` 目录运行 `./deploy.sh config` 只同步配置和源码、不启动服务。执行 `./migrate-production-db.sh` 时需提供 `DEPLOY_HOST` 并显式设置 `CONFIRM_PRODUCTION_DB_IMPORT=YES`；脚本会备份本地 PostgreSQL，再经 SSH 导入到生产端新建或空的数据库。只要目标库已有 public 表，脚本就会拒绝覆盖。导入成功后再运行 `./deploy.sh all` 启动应用。
+
+本地 Halo 导入的媒体记录仍指向 `s3.hzcat.com`，数据库迁移不会复制旧站图片。两个脚本的参数和前置条件可通过源码中的 `--help` 查看；不要将生产 `.env` 或数据库备份提交到 Git。

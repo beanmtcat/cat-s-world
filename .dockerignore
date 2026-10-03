@@ -1,0 +1,14 @@
+*
+!package.json
+!package-lock.json
+!frontend/
+frontend/*
+!frontend/package.json
+!frontend/index.html
+!frontend/index.webp
+!frontend/vite.config.js
+!frontend/nginx.conf
+!frontend/src/
+!frontend/src/**
+._*
+.DS_Store

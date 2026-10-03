@@ -1,5 +1,7 @@
-# Secure deployment template. Copy this file to docker-compose.yml and copy
-# .env.example to .env before use. Never commit the generated .env file.
+# Secure full-stack template. Copy to deploy/docker-compose.yml and copy
+# deploy/.env.example to deploy/.env before use. The deployment script installs
+# both files at the remote project root, where build paths below are resolved.
+# Never commit generated configuration containing credentials.
 name: mmcat
 
 services:
@@ -101,6 +103,7 @@ services:
       APP_BASE_URL: ${APP_BASE_URL:?Set APP_BASE_URL in .env}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mmcat}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mmcat}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX:-mmcat}
       TRUSTED_HOSTS: ${TRUSTED_HOSTS:?Set TRUSTED_HOSTS in .env}
       CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS in .env}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-__Host-mmcat-session}
@@ -137,6 +140,18 @@ services:
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     command: ["sh", "-ec", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+
+  frontend:
+    container_name: mmcat-frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    # Serve this port through the public TLS reverse proxy.
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
 
 volumes:
   postgres_data:
