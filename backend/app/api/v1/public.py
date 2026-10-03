@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from datetime import UTC, datetime
 from math import ceil
 from uuid import UUID
@@ -10,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import request_id, require_csrf
+from app.core.config import get_settings
 from app.core.errors import AppError
 from app.db.session import get_session
 from app.models.core import Category, Comment, Page, Post, SiteProperties, Tag, User, UserSession
@@ -27,9 +29,10 @@ from app.models.supplemental import (
 )
 from app.schemas.content import CommentCreate, CommentPublic, PostDetail, PostSummary, SitePublic
 from app.services.analytics import record_post_view
-from app.services.content import PostService
+from app.services.content import PostService, post_view_counts
 from app.services.rate_limit import enforce_rate_limit
 from app.services.redirects import resolve_redirect
+from app.services.rss import build_rss_feed
 
 router = APIRouter(tags=["public"])
 
@@ -38,72 +41,42 @@ def _meta(request: Request) -> dict[str, str]:
     return {"requestId": str(request_id(request))}
 
 
-def _post_summary(post: Post) -> dict[str, object]:
+_CODE_FENCE = re.compile(r"```.*?(?:```|\Z)", re.DOTALL)
+_MD_IMAGE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+_MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+_MD_MARKS = re.compile(r"[`*_>#]")
+
+# The site-wide total scans every daily counter row; a short per-process cache
+# keeps that off the hot path of each home-page request.
+_SITE_VIEW_TTL_SECONDS = 60.0
+_site_view_cache: dict[str, tuple[float, int]] = {}
+
+
+def _post_summary(post: Post, excerpt_source: str) -> dict[str, object]:
     payload = PostSummary.model_validate(post).model_dump(mode="json", by_alias=True)
     if not payload["summary"]:
-        text = re.sub(r"```.*?```", " ", post.content, flags=re.DOTALL)
-        text = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", text)
-        text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
-        text = re.sub(r"[`*_>#]", "", text)
+        text = _CODE_FENCE.sub(" ", excerpt_source)
+        text = _MD_IMAGE.sub(" ", text)
+        text = _MD_LINK.sub(r"\1", text)
+        text = _MD_MARKS.sub("", text)
         # Keep cards useful when legacy Halo entries omitted an excerpt.  This
         # is deliberately plain text: card APIs never expose editor HTML.
-        text = text.replace("\n", " ")
         text = " ".join(part for part in text.split() if not part.startswith("#"))
         payload["summary"] = text[:150].strip() or None
     return payload
 
 
-async def _post_card_payload(session: AsyncSession, post: Post) -> dict[str, object]:
-    """Attach the taxonomy and counters displayed by public article cards."""
-    payload = _post_summary(post)
-    categories = list(
-        await session.scalars(
-            select(Category.name)
-            .join(PostCategory, PostCategory.category_id == Category.id)
-            .where(PostCategory.post_id == post.id, PostCategory.isvalid.is_(True), Category.isvalid.is_(True))
-            .order_by(Category.sort_order, Category.name)
-        )
-    )
-    tags = list(
-        await session.scalars(
-            select(Tag.name)
-            .join(PostTag, PostTag.tag_id == Tag.id)
-            .where(PostTag.post_id == post.id, PostTag.isvalid.is_(True), Tag.isvalid.is_(True))
-            .order_by(Tag.name)
-        )
-    )
-    comment_count = await session.scalar(
-        select(func.count()).select_from(Comment).where(
-            Comment.post_id == post.id, Comment.isvalid.is_(True), Comment.status == "approved"
-        )
-    )
-    view_count = await session.scalar(
-        select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
-            VisitDaily.path.in_((f"/archives/{post.slug}", f"/posts/{post.slug}")),
-            VisitDaily.locale == post.locale,
-            VisitDaily.isvalid.is_(True),
-        )
-    )
-    payload.update(
-        {
-            "categories": categories,
-            "tags": tags,
-            "commentCount": int(comment_count or 0),
-            "viewCount": int(view_count or 0),
-        }
-    )
-    return payload
-
-
-async def _post_card_payloads(session: AsyncSession, posts: list[Post]) -> list[dict[str, object]]:
+async def _post_card_payloads(
+    session: AsyncSession, rows: list[tuple[Post, str]]
+) -> list[dict[str, object]]:
     """Batch-load card decorations, avoiding four queries for every post."""
-    if not posts:
+    if not rows:
         return []
+    posts = [post for post, _ in rows]
     post_ids = [post.id for post in posts]
     categories: dict[UUID, list[str]] = {post_id: [] for post_id in post_ids}
     tags: dict[UUID, list[str]] = {post_id: [] for post_id in post_ids}
     comments: dict[UUID, int] = {post_id: 0 for post_id in post_ids}
-    views: dict[tuple[str, str], int] = {}
     category_rows = await session.execute(
         select(PostCategory.post_id, Category.name)
         .join(Category, Category.id == PostCategory.category_id)
@@ -127,24 +100,16 @@ async def _post_card_payloads(session: AsyncSession, posts: list[Post]) -> list[
     )
     for post_id, count in comment_rows:
         comments[post_id] = int(count)
-    paths = [path for post in posts for path in (f"/archives/{post.slug}", f"/posts/{post.slug}")]
-    view_rows = await session.execute(
-        select(VisitDaily.path, VisitDaily.locale, func.sum(VisitDaily.page_views)).where(
-            VisitDaily.path.in_(paths), VisitDaily.isvalid.is_(True)
-        ).group_by(VisitDaily.path, VisitDaily.locale)
-    )
-    for path, locale, count in view_rows:
-        views[(path, locale)] = int(count or 0)
+    views = await post_view_counts(session, [(post.slug, post.locale) for post in posts])
     result = []
-    for post in posts:
-        payload = _post_summary(post)
+    for post, excerpt_source in rows:
+        payload = _post_summary(post, excerpt_source)
         payload.update(
             {
                 "categories": categories[post.id],
                 "tags": tags[post.id],
                 "commentCount": comments[post.id],
-                "viewCount": views.get((f"/archives/{post.slug}", post.locale), 0)
-                + views.get((f"/posts/{post.slug}", post.locale), 0),
+                "viewCount": views.get((post.slug, post.locale), 0),
             }
         )
         result.append(payload)
@@ -162,6 +127,30 @@ async def health_ready(
 ) -> dict[str, object]:
     await session.execute(select(1))
     return {"data": {"status": "ready"}, "meta": _meta(request)}
+
+
+@router.get("/rss.xml", response_class=Response)
+async def rss_feed(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> Response:
+    """Latest publicly listed Chinese articles as RSS 2.0 XML."""
+    properties = await session.scalar(
+        select(SiteProperties).where(SiteProperties.isvalid.is_(True))
+    )
+    rows, _ = await PostService.list_public(session, "zh-CN", 1, 30, None)
+    posts = [(post, _post_summary(post, excerpt)["summary"]) for post, excerpt in rows]
+    xml = build_rss_feed(
+        site_title=properties.site_name_zh if properties else "猫子的世界",
+        site_description=properties.site_description_zh if properties else None,
+        site_url=str(get_settings().app_base_url),
+        feed_url=str(request.url),
+        posts=posts,
+    )
+    return Response(
+        content=xml,
+        media_type="application/rss+xml; charset=utf-8",
+        headers={"Cache-Control": "public, max-age=300"},
+    )
 
 
 @router.get("/posts")
@@ -196,30 +185,20 @@ async def get_home(
 ) -> dict[str, object]:
     """首页聚合数据；只公开已发布内容与安全的状态展示字段。"""
     posts, total = await PostService.list_public(session, locale, 1, 6, None)
-    category_rows = await session.execute(
-        select(Category, func.count(PostCategory.post_id).label("post_count"))
-        .outerjoin(
-            PostCategory, (PostCategory.category_id == Category.id) & PostCategory.isvalid.is_(True)
+    category_rows = (
+        await session.execute(
+            select(Category, func.count(PostCategory.post_id).label("post_count"))
+            .outerjoin(
+                PostCategory,
+                (PostCategory.category_id == Category.id) & PostCategory.isvalid.is_(True),
+            )
+            .where(Category.locale == locale, Category.isvalid.is_(True))
+            .group_by(Category.id)
+            .order_by(Category.sort_order, Category.name)
         )
-        .where(Category.locale == locale, Category.isvalid.is_(True))
-        .group_by(Category.id)
-        .order_by(Category.sort_order, Category.name)
-        .limit(12)
-    )
-    home_category_rows = await session.execute(
-        select(Category, func.count(PostCategory.post_id).label("post_count"))
-        .outerjoin(
-            PostCategory, (PostCategory.category_id == Category.id) & PostCategory.isvalid.is_(True)
-        )
-        .where(
-            Category.locale == locale,
-            Category.isvalid.is_(True),
-            Category.is_home_visible.is_(True),
-        )
-        .group_by(Category.id)
-        .order_by(Category.sort_order, Category.name)
-        .limit(12)
-    )
+    ).all()
+    home_category_rows = [row for row in category_rows if row[0].is_home_visible][:12]
+    category_rows = category_rows[:12]
     tag_rows = await session.execute(
         select(Tag, func.count(PostTag.post_id).label("post_count"))
         .outerjoin(PostTag, (PostTag.tag_id == Tag.id) & PostTag.isvalid.is_(True))
@@ -240,16 +219,24 @@ async def get_home(
         .order_by(StatusNode.sort_order, StatusNode.code)
         .limit(8)
     )
-    site_view_count = await session.scalar(
-        select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
-            VisitDaily.locale == locale,
-            VisitDaily.isvalid.is_(True),
+    cached = _site_view_cache.get(locale)
+    if cached is not None and time.monotonic() - cached[0] < _SITE_VIEW_TTL_SECONDS:
+        site_view_count = cached[1]
+    else:
+        site_view_count = int(
+            await session.scalar(
+                select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
+                    VisitDaily.locale == locale,
+                    VisitDaily.isvalid.is_(True),
+                )
+            )
+            or 0
         )
-    )
+        _site_view_cache[locale] = (time.monotonic(), site_view_count)
     return {
         "data": {
             "postCount": total,
-            "siteViewCount": int(site_view_count or 0),
+            "siteViewCount": site_view_count,
             "posts": await _post_card_payloads(session, posts),
             "categories": [
                 {"id": str(item.id), "name": item.name, "slug": item.slug, "postCount": count}
@@ -458,7 +445,7 @@ async def get_public_gallery(
     slug: str,
     request: Request,
     locale: str = Query("zh-CN", pattern="^(zh-CN|en-US)$"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10_000),
     page_size: int = Query(24, ge=1, le=60),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
@@ -558,13 +545,8 @@ async def get_post(
         payload["viewCount"] = view_count
         await session.commit()
     else:
-        payload["viewCount"] = await session.scalar(
-            select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
-                VisitDaily.path.in_((f"/archives/{post.slug}", f"/posts/{post.slug}")),
-                VisitDaily.locale == post.locale,
-                VisitDaily.isvalid.is_(True),
-            )
-        ) or 0
+        totals = await post_view_counts(session, [(post.slug, post.locale)])
+        payload["viewCount"] = totals.get((post.slug, post.locale), 0)
     return {"data": payload, "meta": _meta(request)}
 
 
@@ -572,8 +554,11 @@ async def get_post(
 async def post_translations(
     post_id: UUID, request: Request, session: AsyncSession = Depends(get_session)
 ) -> dict[str, object]:
-    posts = await PostService.get_translation_ids(session, post_id)
-    return {"data": [_post_summary(post) for post in posts], "meta": _meta(request)}
+    rows = await PostService.get_translations(session, post_id)
+    return {
+        "data": [_post_summary(post, excerpt_source) for post, excerpt_source in rows],
+        "meta": _meta(request),
+    }
 
 
 @router.get("/pages/{slug}")
@@ -674,6 +659,17 @@ async def list_comments(
     if (post_id is None) == (page_id is None):
         raise AppError("COMMENT_TARGET_REQUIRED", "必须且只能指定一个评论目标。", 422)
     target_type, target_id = ("post", post_id) if post_id else ("page", page_id)
+    target_model = Post if target_type == "post" else Page
+    target_is_public = await session.scalar(
+        select(target_model.id).where(
+            target_model.id == target_id,
+            target_model.isvalid.is_(True),
+            target_model.status == "published",
+            target_model.visibility.in_(("public", "unlisted")),
+        )
+    )
+    if target_is_public is None:
+        raise AppError("COMMENT_TARGET_NOT_FOUND", "评论目标不存在。", 404)
     target_column = Comment.post_id if target_type == "post" else Comment.page_id
     where = [Comment.isvalid.is_(True), Comment.status == "approved", target_column == target_id]
     root_where = [*where, Comment.parent_id.is_(None)]

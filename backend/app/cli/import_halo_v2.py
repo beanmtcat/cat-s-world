@@ -42,6 +42,7 @@ from app.models.supplemental import (
     PostTag,
     VisitDaily,
 )
+from app.services.redirects import normalize_legacy_path
 
 
 def _arguments() -> argparse.Namespace:
@@ -82,15 +83,22 @@ def _arguments() -> argparse.Namespace:
 
 
 def _target_path(candidate: HaloCandidate) -> str:
-    return f"{'/posts' if candidate.kind == 'post' else '/pages'}/{candidate.slug}"
+    # Must match the public SPA routes: posts live under /archives, pages at the root.
+    return f"/archives/{candidate.slug}" if candidate.kind == "post" else f"/{candidate.slug}"
 
 
 async def _redirect(session, source_url: str | None, destination: str) -> None:
     if not source_url:
         return
     parsed = urlsplit(source_url)
-    source_path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
-    if not source_path or source_path == destination:
+    try:
+        # Store the same canonical form that the resolver looks up.
+        source_path = normalize_legacy_path(
+            parsed.path + (f"?{parsed.query}" if parsed.query else "")
+        )
+    except AppError:
+        return
+    if source_path == destination:
         return
     if await session.scalar(select(Redirect).where(Redirect.from_path == source_path)) is None:
         session.add(Redirect(from_path=source_path, to_path=destination, status_code=301))
@@ -882,7 +890,8 @@ async def run(args: argparse.Namespace) -> None:
                 (
                     await session.execute(
                         text(
-                            "select quote_ident(tablename) from pg_tables where schemaname = 'public' and tablename <> 'mmcat_users'"
+                            "select quote_ident(tablename) from pg_tables where schemaname = 'public' "
+                            "and tablename not in ('mmcat_users', 'alembic_version')"
                         )
                     )
                 )
@@ -914,16 +923,19 @@ async def run(args: argparse.Namespace) -> None:
         if not args.statistics_only:
             for candidate in candidates:
                 try:
-                    imported = await _write_candidate(
-                        session,
-                        job,
-                        author,
-                        candidate,
-                        args.locale,
-                        args.update_existing,
-                        taxonomy,
-                        write_taxonomy,
-                    )
+                    # A savepoint confines a failed row to itself; without it one
+                    # database error poisons the transaction for every later row.
+                    async with session.begin_nested():
+                        imported = await _write_candidate(
+                            session,
+                            job,
+                            author,
+                            candidate,
+                            args.locale,
+                            args.update_existing,
+                            taxonomy,
+                            write_taxonomy,
+                        )
                     job.success_count += int(imported)
                 except Exception as exc:
                     session.add(

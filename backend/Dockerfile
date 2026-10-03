@@ -16,4 +16,6 @@ RUN pip install --upgrade pip && pip install .
 
 USER mmcat
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# uvicorn reads FORWARDED_ALLOW_IPS (trusted reverse proxies) and WEB_CONCURRENCY
+# (worker count) from the environment.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]

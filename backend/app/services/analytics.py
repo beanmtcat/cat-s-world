@@ -5,12 +5,13 @@ from __future__ import annotations
 from datetime import UTC, datetime, time
 
 from fastapi import Request
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_identifier
 from app.models.supplemental import VisitDaily, VisitEvent
+from app.services.content import post_view_counts
 
 _BOT_MARKERS = (
     "bot",
@@ -53,49 +54,47 @@ async def record_post_view(
     visitor_hash = hash_identifier(client_ip)
     session_hash = hash_identifier(f"{client_ip}\n{user_agent}\n{occurred_at.date().isoformat()}")
 
-    # Create the daily row atomically, then serialize updates for this
-    # path/day/locale.  This prevents lost increments and first-view races.
+    # One query answers both "seen today?" questions.  A concurrent first view
+    # may be counted twice as unique; that is an acceptable trade for not
+    # holding a row lock across several round trips.
+    seen_visitor, seen_session = (
+        await session.execute(
+            select(
+                func.coalesce(func.bool_or(VisitEvent.visitor_hash == visitor_hash), False),
+                func.coalesce(func.bool_or(VisitEvent.session_hash == session_hash), False),
+            ).where(
+                VisitEvent.path == path,
+                VisitEvent.locale == locale,
+                VisitEvent.occurred_at >= day_start,
+                VisitEvent.isvalid.is_(True),
+                or_(
+                    VisitEvent.visitor_hash == visitor_hash,
+                    VisitEvent.session_hash == session_hash,
+                ),
+            )
+        )
+    ).one()
+    new_visitor, new_session = int(not seen_visitor), int(not seen_session)
+    # A single atomic upsert replaces insert + SELECT ... FOR UPDATE + UPDATE.
+    upsert = insert(VisitDaily).values(
+        stat_date=occurred_at.date(),
+        path=path,
+        locale=locale,
+        page_views=1,
+        unique_visitors=new_visitor,
+        sessions=new_session,
+    )
     await session.execute(
-        insert(VisitDaily)
-        .values(
-            stat_date=occurred_at.date(), path=path, locale=locale,
-            page_views=0, unique_visitors=0, sessions=0,
+        upsert.on_conflict_do_update(
+            index_elements=["stat_date", "path", "locale"],
+            set_={
+                "page_views": VisitDaily.page_views + 1,
+                "unique_visitors": VisitDaily.unique_visitors + new_visitor,
+                "sessions": VisitDaily.sessions + new_session,
+                "mtime": func.now(),
+            },
         )
-        .on_conflict_do_nothing(index_elements=["stat_date", "path", "locale"])
     )
-    daily = await session.scalar(
-        select(VisitDaily)
-        .where(
-            VisitDaily.stat_date == occurred_at.date(), VisitDaily.path == path,
-            VisitDaily.locale == locale, VisitDaily.isvalid.is_(True),
-        )
-        .with_for_update()
-    )
-    if daily is None:
-        return None
-    seen_visitor = await session.scalar(
-        select(VisitEvent.id).where(
-            VisitEvent.path == path,
-            VisitEvent.locale == locale,
-            VisitEvent.visitor_hash == visitor_hash,
-            VisitEvent.occurred_at >= day_start,
-            VisitEvent.isvalid.is_(True),
-        ).limit(1)
-    )
-    seen_session = await session.scalar(
-        select(VisitEvent.id).where(
-            VisitEvent.path == path,
-            VisitEvent.locale == locale,
-            VisitEvent.session_hash == session_hash,
-            VisitEvent.occurred_at >= day_start,
-            VisitEvent.isvalid.is_(True),
-        ).limit(1)
-    )
-    daily.page_views += 1
-    if seen_visitor is None:
-        daily.unique_visitors += 1
-    if seen_session is None:
-        daily.sessions += 1
     session.add(
         VisitEvent(
             ip_address=client_ip,
@@ -107,10 +106,5 @@ async def record_post_view(
         )
     )
     await session.flush()
-    return await session.scalar(
-        select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
-            VisitDaily.path.in_((path, f"/posts/{slug}")),
-            VisitDaily.locale == locale,
-            VisitDaily.isvalid.is_(True),
-        )
-    )
+    totals = await post_view_counts(session, [(slug, locale)])
+    return totals.get((slug, locale), 0)

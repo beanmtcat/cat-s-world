@@ -29,7 +29,3 @@ class UserPublic(ApiModel):
     email_verified: bool
     avatar_media_id: str | None = None
     avatar_url: str | None = None
-
-
-class CsrfResponse(ApiModel):
-    csrf_token: str

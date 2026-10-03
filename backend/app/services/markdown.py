@@ -39,10 +39,3 @@ def parse_markdown(raw: str) -> MarkdownDocument:
         content=content,
         content_hash=hashlib.sha256(content.encode("utf-8")).hexdigest(),
     )
-
-
-def dump_markdown(metadata: dict[str, object], content: str) -> str:
-    """Export stable UTF-8 Markdown; the database remains the source of truth."""
-    safe_metadata = {key: value for key, value in metadata.items() if value is not None}
-    front_matter = yaml.safe_dump(safe_metadata, allow_unicode=True, sort_keys=True).strip()
-    return f"---\n{front_matter}\n---\n\n{content.rstrip()}\n"

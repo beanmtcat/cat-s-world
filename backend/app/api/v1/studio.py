@@ -6,18 +6,21 @@ import re
 import socket
 import struct
 from datetime import UTC, datetime
+from functools import lru_cache
 from math import ceil
 from pathlib import PurePath
 from tempfile import SpooledTemporaryFile
 from typing import BinaryIO
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 import boto3
 from botocore.config import Config
 from fastapi import APIRouter, Depends, Query, Request, Response
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import case, delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from app.api.deps import request_id, require_roles
 from app.core.config import get_settings
@@ -43,12 +46,11 @@ from app.models.supplemental import (
     Media,
     NavigationItem,
     NavigationMenu,
-    OutboxEvent,
     PostCategory,
     PostTag,
     StatusNode,
-    VisitDaily,
 )
+from app.schemas.common import escape_like
 from app.schemas.content import (
     PostSummary,
     StudioCommentModeration,
@@ -68,7 +70,8 @@ from app.schemas.content import (
     StudioUserUpdate,
 )
 from app.services.auth import revoke_all_user_sessions
-from app.services.content import PostService
+from app.services.content import PostService, post_view_counts
+from app.services.html import sanitize_html
 from app.services.rate_limit import enforce_rate_limit
 
 router = APIRouter(prefix="/studio", tags=["studio"])
@@ -76,6 +79,8 @@ router = APIRouter(prefix="/studio", tags=["studio"])
 MAX_MEDIA_UPLOAD_BYTES = 50 * 1024 * 1024
 _SAFE_MEDIA_NAME = re.compile(r"[^A-Za-z0-9._-]+")
 _INLINE_MEDIA_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+# Every save stores a full copy of the document; keep a bounded history per target.
+MAX_REVISIONS_PER_TARGET = 50
 
 
 def _detect_media_type(header: bytes) -> str | None:
@@ -122,60 +127,84 @@ def _scan_upload(content: BinaryIO) -> None:
         raise RuntimeError(response or "ClamAV did not return a clean result")
 
 
+def _stored_content(content: str, content_format: str) -> str:
+    """Rich-text HTML is sanitized before it is stored; Markdown is kept verbatim."""
+    return sanitize_html(content) if content_format == "html" else content
+
+
 def _payload(post: Post) -> dict[str, object]:
     return PostSummary.model_validate(post).model_dump(mode="json", by_alias=True)
 
 
-async def _post_library_payload(session: AsyncSession, post: Post) -> dict[str, object]:
-    """Add the information the studio list needs without exposing post content."""
-    category_rows = (
-        await session.execute(
-            select(Category.id, Category.name)
-            .join(PostCategory, PostCategory.category_id == Category.id)
-            .where(PostCategory.post_id == post.id, PostCategory.isvalid.is_(True), Category.isvalid.is_(True))
-            .order_by(Category.sort_order, Category.name)
+async def _post_library_payloads(session: AsyncSession, posts: list[Post]) -> list[dict[str, object]]:
+    """Decorate one page of studio rows with a fixed number of queries."""
+    if not posts:
+        return []
+    post_ids = [post.id for post in posts]
+    categories: dict[UUID, list[tuple[UUID, str]]] = {post_id: [] for post_id in post_ids}
+    tags: dict[UUID, list[tuple[UUID, str]]] = {post_id: [] for post_id in post_ids}
+    for post_id, item_id, name in await session.execute(
+        select(PostCategory.post_id, Category.id, Category.name)
+        .join(Category, Category.id == PostCategory.category_id)
+        .where(PostCategory.post_id.in_(post_ids), PostCategory.isvalid.is_(True), Category.isvalid.is_(True))
+        .order_by(Category.sort_order, Category.name)
+    ):
+        categories[post_id].append((item_id, name))
+    for post_id, item_id, name in await session.execute(
+        select(PostTag.post_id, Tag.id, Tag.name)
+        .join(Tag, Tag.id == PostTag.tag_id)
+        .where(PostTag.post_id.in_(post_ids), PostTag.isvalid.is_(True), Tag.isvalid.is_(True))
+        .order_by(Tag.name)
+    ):
+        tags[post_id].append((item_id, name))
+    authors = dict(
+        (
+            await session.execute(
+                select(User.id, User.display_name).where(User.id.in_({post.author_id for post in posts}))
+            )
+        ).all()
+    )
+    comments = dict(
+        (
+            await session.execute(
+                select(Comment.post_id, func.count())
+                .where(Comment.post_id.in_(post_ids), Comment.isvalid.is_(True), Comment.status == "approved")
+                .group_by(Comment.post_id)
+            )
+        ).all()
+    )
+    views = await post_view_counts(session, [(post.slug, post.locale) for post in posts])
+    result = []
+    for post in posts:
+        payload = _payload(post)
+        payload.update(
+            {
+                "status": post.status,
+                "visibility": post.visibility,
+                "categoryIds": [str(item_id) for item_id, _ in categories[post.id]],
+                "categoryNames": [name for _, name in categories[post.id]],
+                "tagIds": [str(item_id) for item_id, _ in tags[post.id]],
+                "tagNames": [name for _, name in tags[post.id]],
+                "authorName": authors.get(post.author_id) or "未知作者",
+                "commentCount": int(comments.get(post.id, 0)),
+                "viewCount": views.get((post.slug, post.locale), 0),
+                "updatedAt": post.mtime,
+                "createdAt": post.ctime,
+                "deletedAt": post.deleted_at,
+            }
         )
-    ).all()
-    tag_rows = (
-        await session.execute(
-            select(Tag.id, Tag.name)
-            .join(PostTag, PostTag.tag_id == Tag.id)
-            .where(PostTag.post_id == post.id, PostTag.isvalid.is_(True), Tag.isvalid.is_(True))
-            .order_by(Tag.name)
-        )
-    ).all()
-    author_name = await session.scalar(select(User.display_name).where(User.id == post.author_id))
-    comment_count = await session.scalar(
-        select(func.count()).select_from(Comment).where(
-            Comment.post_id == post.id,
-            Comment.isvalid.is_(True),
-            Comment.status == "approved",
+        result.append(payload)
+    return result
+
+
+async def _prune_revisions(session: AsyncSession, target_type: str, target_id: UUID, latest: int) -> None:
+    await session.execute(
+        delete(ContentRevision).where(
+            ContentRevision.target_type == target_type,
+            ContentRevision.target_id == target_id,
+            ContentRevision.revision_no <= latest - MAX_REVISIONS_PER_TARGET,
         )
     )
-    view_count = await session.scalar(
-        select(func.coalesce(func.sum(VisitDaily.page_views), 0)).where(
-            VisitDaily.isvalid.is_(True),
-            VisitDaily.path.in_((f"/archives/{post.slug}", f"/posts/{post.slug}")),
-        )
-    )
-    payload = _payload(post)
-    payload.update(
-        {
-            "status": post.status,
-            "visibility": post.visibility,
-            "categoryIds": [str(item.id) for item in category_rows],
-            "categoryNames": [item.name for item in category_rows],
-            "tagIds": [str(item.id) for item in tag_rows],
-            "tagNames": [item.name for item in tag_rows],
-            "authorName": author_name or "未知作者",
-            "commentCount": comment_count or 0,
-            "viewCount": view_count or 0,
-            "updatedAt": post.mtime,
-            "createdAt": post.ctime,
-            "deletedAt": post.deleted_at,
-        }
-    )
-    return payload
 
 
 async def _post_taxonomy_ids(session: AsyncSession, post_id: UUID) -> tuple[list[str], list[str]]:
@@ -282,10 +311,13 @@ async def list_drafts(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
     user = identity[0]
-    query = select(Post).where(Post.isvalid.is_(not trashed))
+    query = select(Post).options(defer(Post.content)).where(Post.isvalid.is_(not trashed))
     if user.role == "author":
         query = query.where(Post.author_id == user.id)
-    total = await session.scalar(select(func.count()).select_from(query.subquery())) or 0
+    count_query = select(func.count()).select_from(Post).where(Post.isvalid.is_(not trashed))
+    if user.role == "author":
+        count_query = count_query.where(Post.author_id == user.id)
+    total = await session.scalar(count_query) or 0
     rows = await session.scalars(
         query.order_by(
             Post.deleted_at.desc().nulls_last() if trashed else Post.published_at.desc().nulls_last(),
@@ -296,7 +328,7 @@ async def list_drafts(
         .limit(page_size)
     )
     return {
-        "data": [await _post_library_payload(session, post) for post in rows],
+        "data": await _post_library_payloads(session, list(rows)),
         "meta": {
             "requestId": str(request_id(request)),
             "page": page,
@@ -315,14 +347,15 @@ async def create_draft(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
     user = identity[0]
+    content = _stored_content(body.content, body.content_format)
     post = Post(
         locale=body.locale,
         slug=body.slug,
         title=body.title.strip(),
         summary=body.summary.strip() if body.summary else None,
-        content=body.content,
+        content=content,
         content_format=body.content_format,
-        content_hash=PostService.content_hash(body.content),
+        content_hash=PostService.content_hash(content),
         cover_url=str(body.cover_url) if body.cover_url else None,
         author_id=user.id,
         status="draft",
@@ -346,15 +379,6 @@ async def create_draft(
             change_summary="创建草稿",
         )
     )
-    session.add(
-        OutboxEvent(
-            event_type="post.draft_created",
-            aggregate_type="post",
-            aggregate_id=post.id,
-            payload={"postId": str(post.id), "authorId": str(user.id)},
-            idempotency_key=f"post:{post.id}:draft-created",
-        )
-    )
     try:
         await session.commit()
     except IntegrityError as exc:
@@ -366,10 +390,13 @@ async def create_draft(
     return {"data": _payload(post), "meta": {"requestId": str(request_id(request))}}
 
 
-async def _editable_post(session: AsyncSession, post_id: UUID, user: User) -> Post:
-    # Serialize revisions for one post so revision numbers remain unique under
-    # concurrent saves.  The lock is held only for this short transaction.
-    post = await session.scalar(select(Post).where(Post.id == post_id).with_for_update())
+async def _editable_post(
+    session: AsyncSession, post_id: UUID, user: User, *, lock: bool = True
+) -> Post:
+    # Writers serialize revisions for one post so revision numbers remain
+    # unique under concurrent saves.  Plain reads skip the row lock.
+    query = select(Post).where(Post.id == post_id)
+    post = await session.scalar(query.with_for_update() if lock else query)
     if post is None or not post.isvalid:
         raise AppError("POST_NOT_FOUND", "文章不存在。", 404)
     if user.role == "author" and post.author_id != user.id:
@@ -384,7 +411,7 @@ async def get_studio_post(
     identity: tuple[User, UserSession] = Depends(require_roles("admin", "editor", "author")),
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
-    post = await _editable_post(session, post_id, identity[0])
+    post = await _editable_post(session, post_id, identity[0], lock=False)
     category_ids, tag_ids = await _post_taxonomy_ids(session, post.id)
     return {
         "data": {
@@ -424,7 +451,11 @@ async def update_studio_post(
     ):
         if field in changes:
             setattr(post, field, changes[field])
-    if "content" in changes:
+    for field in ("title", "slug", "content", "locale", "status", "visibility", "content_format"):
+        if field in changes and changes[field] is None:
+            raise AppError("POST_FIELD_REQUIRED", "标题、地址、正文、语言和状态不能为空。", 422)
+    if "content" in changes or "content_format" in changes:
+        post.content = _stored_content(post.content, post.content_format)
         post.content_hash = PostService.content_hash(post.content)
     if "status" in changes:
         post.status = changes["status"]
@@ -464,6 +495,7 @@ async def update_studio_post(
             change_summary="工作台更新",
         )
     )
+    await _prune_revisions(session, "post", post.id, (last_revision or 0) + 1)
     try:
         await session.commit()
     except IntegrityError as exc:
@@ -516,19 +548,23 @@ async def dashboard(
     post_scope = [Post.isvalid.is_(True)]
     if user.role == "author":
         post_scope.append(Post.author_id == user.id)
-    total = await session.scalar(select(func.count(Post.id)).where(*post_scope)) or 0
-    published = await session.scalar(
-        select(func.count(Post.id)).where(*post_scope, Post.status == "published")
-    ) or 0
-    drafts = await session.scalar(
-        select(func.count(Post.id)).where(*post_scope, Post.status == "draft")
-    ) or 0
+    total, published, drafts = (
+        await session.execute(
+            select(
+                func.count(Post.id),
+                func.coalesce(func.sum(case((Post.status == "published", 1), else_=0)), 0),
+                func.coalesce(func.sum(case((Post.status == "draft", 1), else_=0)), 0),
+            ).where(*post_scope)
+        )
+    ).one()
     pending_comments = 0
     if user.role in {"admin", "editor"}:
         pending_comments = await session.scalar(
             select(func.count(Comment.id)).where(Comment.isvalid.is_(True), Comment.status == "pending")
         ) or 0
-    recent = await session.scalars(select(Post).where(*post_scope).order_by(Post.mtime.desc()).limit(6))
+    recent = await session.scalars(
+        select(Post).options(defer(Post.content)).where(*post_scope).order_by(Post.mtime.desc()).limit(6)
+    )
     return {
         "data": {
             "totalPosts": total,
@@ -653,6 +689,7 @@ def _page_payload(page: Page, include_content: bool = False) -> dict[str, object
 async def list_pages(request: Request, trashed: bool = Query(False), _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     rows = await session.scalars(
         select(Page)
+        .options(defer(Page.content))
         .where(Page.isvalid.is_(not trashed))
         .order_by(Page.deleted_at.desc().nulls_last() if trashed else Page.mtime.desc(), Page.id.desc())
         .limit(100)
@@ -671,6 +708,7 @@ async def get_page_for_studio(page_id: UUID, request: Request, _: tuple[User, Us
 def _apply_page(page: Page, body: StudioPageInput, user: User) -> None:
     for field, value in body.model_dump().items():
         setattr(page, field, value)
+    page.content = _stored_content(page.content, page.content_format)
     if page.status == "published":
         page.published_at = page.published_at or datetime.now(UTC)
     elif page.status == "draft":
@@ -681,6 +719,7 @@ def _apply_page(page: Page, body: StudioPageInput, user: User) -> None:
 @router.post("/pages", status_code=201)
 async def create_page(body: StudioPageInput, request: Request, identity: tuple[User, UserSession] = Depends(require_roles("admin", "editor")), session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     page = Page(author_id=identity[0].id, **body.model_dump())
+    page.content = _stored_content(page.content, page.content_format)
     if page.status == "published":
         page.published_at = datetime.now(UTC)
     session.add(page)
@@ -800,8 +839,6 @@ async def _navigation_target_url(session: AsyncSession, body: StudioNavigationIn
     if body.target_type == "custom":
         if not body.url or not body.url.strip():
             raise AppError("NAVIGATION_URL_REQUIRED", "自定义菜单必须填写链接地址。", 422)
-        from urllib.parse import urlsplit
-
         url = body.url.strip()
         parts = urlsplit(url)
         # Never persist executable protocols in an href.  Relative links must
@@ -920,25 +957,35 @@ async def list_navigation_targets(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
     """Return all selectable content, without limiting the article picker to one list page."""
-    posts = await session.scalars(
-        select(Post).where(Post.isvalid.is_(True)).order_by(Post.published_at.desc(), Post.ctime.desc())
+    posts = await session.execute(
+        select(Post.id, Post.title, Post.slug, Post.locale)
+        .where(Post.isvalid.is_(True))
+        .order_by(Post.published_at.desc(), Post.ctime.desc())
     )
-    pages = await session.scalars(select(Page).where(Page.isvalid.is_(True)).order_by(Page.title))
-    categories = await session.scalars(
-        select(Category).where(Category.isvalid.is_(True)).order_by(Category.sort_order, Category.name)
+    pages = await session.execute(
+        select(Page.id, Page.title, Page.slug, Page.locale).where(Page.isvalid.is_(True)).order_by(Page.title)
     )
-    tags = await session.scalars(select(Tag).where(Tag.isvalid.is_(True)).order_by(Tag.name))
-    def values(rows: object, name: str) -> list[dict[str, str]]:
+    categories = await session.execute(
+        select(Category.id, Category.name, Category.slug, Category.locale)
+        .where(Category.isvalid.is_(True))
+        .order_by(Category.sort_order, Category.name)
+    )
+    tags = await session.execute(
+        select(Tag.id, Tag.name, Tag.slug, Tag.locale).where(Tag.isvalid.is_(True)).order_by(Tag.name)
+    )
+
+    def values(rows: object) -> list[dict[str, str]]:
         return [
-            {"id": str(item.id), "title": getattr(item, name), "slug": item.slug, "locale": item.locale}
-            for item in rows
+            {"id": str(item_id), "title": title, "slug": slug, "locale": locale}
+            for item_id, title, slug, locale in rows
         ]
+
     return {
         "data": {
-            "posts": values(posts, "title"),
-            "pages": values(pages, "title"),
-            "categories": values(categories, "name"),
-            "tags": values(tags, "name"),
+            "posts": values(posts),
+            "pages": values(pages),
+            "categories": values(categories),
+            "tags": values(tags),
         },
         "meta": {"requestId": str(request_id(request))},
     }
@@ -995,8 +1042,6 @@ async def update_navigation(
     }
     for field, value in values.items():
         setattr(item, field, value)
-    if values.get("status") == "disabled" or "role" in values:
-        await revoke_all_user_sessions(session, item.id)
     await session.commit()
     await session.refresh(item)
     return {"data": _navigation_payload(item), "meta": {"requestId": str(request_id(request))}}
@@ -1196,9 +1241,11 @@ def _public_media_url(object_key: str) -> str:
     return f"{str(get_settings().s3_public_base_url).rstrip('/')}/{object_key}"
 
 
-def _put_s3_object(object_key: str, content: BinaryIO, mime_type: str) -> str | None:
+@lru_cache
+def _s3_client():
+    # Building a boto3 client parses service models; reuse one per process.
     settings = get_settings()
-    client = boto3.client(
+    return boto3.client(
         "s3",
         endpoint_url=str(settings.s3_endpoint),
         region_name=settings.s3_region,
@@ -1206,31 +1253,27 @@ def _put_s3_object(object_key: str, content: BinaryIO, mime_type: str) -> str | 
         aws_secret_access_key=settings.s3_secret_access_key.get_secret_value(),
         config=Config(s3={"addressing_style": "path"}),
     )
+
+
+def _put_s3_object(object_key: str, content: BinaryIO, mime_type: str) -> str | None:
+    bucket = get_settings().s3_bucket
+    client = _s3_client()
     content.seek(0)
     client.upload_fileobj(
         content,
-        settings.s3_bucket,
+        bucket,
         object_key,
         ExtraArgs={
             "ContentType": mime_type,
             "ContentDisposition": "inline" if mime_type in _INLINE_MEDIA_TYPES else "attachment",
         },
     )
-    head = client.head_object(Bucket=settings.s3_bucket, Key=object_key)
+    head = client.head_object(Bucket=bucket, Key=object_key)
     return str(head.get("ETag", "")).strip('"') or None
 
 
 def _delete_s3_object(object_key: str) -> None:
-    settings = get_settings()
-    client = boto3.client(
-        "s3",
-        endpoint_url=str(settings.s3_endpoint),
-        region_name=settings.s3_region,
-        aws_access_key_id=settings.s3_access_key_id.get_secret_value(),
-        aws_secret_access_key=settings.s3_secret_access_key.get_secret_value(),
-        config=Config(s3={"addressing_style": "path"}),
-    )
-    client.delete_object(Bucket=settings.s3_bucket, Key=object_key)
+    _s3_client().delete_object(Bucket=get_settings().s3_bucket, Key=object_key)
 
 
 def _gallery_payload(item: Gallery, item_count: int = 0) -> dict[str, object]:
@@ -1331,8 +1374,10 @@ async def list_media(
     """Return a bounded page of assets rather than rendering the whole library at once."""
     filters = [Media.isvalid.is_(True)]
     if keyword and keyword.strip():
-        term = f"%{keyword.strip()}%"
-        filters.append((Media.original_name.ilike(term)) | (Media.source_url.ilike(term)))
+        term = f"%{escape_like(keyword.strip())}%"
+        filters.append(
+            Media.original_name.ilike(term, escape="\\") | Media.source_url.ilike(term, escape="\\")
+        )
     if media_type == "document":
         filters.append(~Media.mime_type.ilike("image/%"))
         filters.append(~Media.mime_type.ilike("video/%"))
@@ -1534,7 +1579,7 @@ async def upload_media(
                     GalleryItem(
                         gallery_id=gallery.id,
                         media_id=item.id,
-                        sort_order=(sort_order or -1) + 1,
+                        sort_order=(-1 if sort_order is None else sort_order) + 1,
                     )
                 )
             else:
@@ -1688,8 +1733,16 @@ async def update_user(user_id: UUID, body: StudioUserUpdate, request: Request, i
         )
         if active_admins <= 1:
             raise AppError("LAST_ADMIN_PROTECTED", "不能禁用或降级最后一个活跃管理员。", 422)
+    for field in ("display_name", "role", "status"):
+        if field in values and values[field] is None:
+            raise AppError("USER_FIELD_REQUIRED", "展示名称、角色和状态不能为空。", 422)
+    role_changed = "role" in values and values["role"] != item.role
+    deactivated = "status" in values and values["status"] != "active" and item.status == "active"
     for field, value in values.items():
         setattr(item, field, value)
+    if role_changed or deactivated:
+        # Force a fresh login so no browser keeps a session issued under the old privileges.
+        await revoke_all_user_sessions(session, item.id)
     await session.commit()
     await session.refresh(item)
     return {"data": _user_payload(item), "meta": {"requestId": str(request_id(request))}}
@@ -1702,7 +1755,7 @@ async def list_comments(
     owner: str = Query("all", pattern="^(all|member|visitor)$"),
     keyword: str = Query("", max_length=120),
     sort: str = Query("newest", pattern="^(newest|oldest)$"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10_000),
     page_size: int = Query(20, ge=1, le=100),
     _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")),
     session: AsyncSession = Depends(get_session),
@@ -1717,8 +1770,10 @@ async def list_comments(
     elif owner == "visitor":
         filters.append(Comment.user_id.is_(None))
     if keyword.strip():
-        term = f"%{keyword.strip()}%"
-        filters.append(or_(Comment.author_name.ilike(term), Comment.content.ilike(term)))
+        term = f"%{escape_like(keyword.strip())}%"
+        filters.append(
+            or_(Comment.author_name.ilike(term, escape="\\"), Comment.content.ilike(term, escape="\\"))
+        )
     total = int(await session.scalar(select(func.count()).select_from(Comment).where(*filters)) or 0)
     order_by = Comment.ctime.asc() if sort == "oldest" else Comment.ctime.desc()
     rows = list(await session.scalars(select(Comment).where(*filters).order_by(order_by, Comment.id).offset((page - 1) * page_size).limit(page_size)))

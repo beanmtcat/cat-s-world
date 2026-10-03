@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +19,7 @@ from app.services.mailer import send_verification_email
 from app.services.rate_limit import enforce_rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger("mmcat.auth")
 
 
 async def _user_payload(user: User, session: AsyncSession) -> dict[str, object]:
@@ -56,13 +59,24 @@ def _set_session_cookies(response: Response, raw_token: str, csrf_token: str) ->
         secure=secure,
         samesite="strict",
         path="/",
+        domain=settings.csrf_cookie_domain,
         max_age=14 * 24 * 60 * 60,
     )
 
 
+async def _deliver_verification_email(address: str, raw_token: str) -> None:
+    try:
+        await send_verification_email(address, raw_token)
+    except Exception:  # noqa: BLE001 - SMTP backends vary.
+        logger.exception("Verification email delivery failed")
+
+
 @router.post("/register", status_code=202)
 async def register(
-    body: RegisterRequest, request: Request, session: AsyncSession = Depends(get_session)
+    body: RegisterRequest,
+    request: Request,
+    background: BackgroundTasks,
+    session: AsyncSession = Depends(get_session),
 ) -> dict[str, object]:
     registration_enabled = await session.scalar(
         select(SiteProperties.registration_enabled).where(SiteProperties.isvalid.is_(True))
@@ -78,10 +92,9 @@ async def register(
     await session.commit()
     if registration is not None:
         _, raw_token = registration
-        try:
-            await send_verification_email(body.email, raw_token)
-        except Exception as error:  # noqa: BLE001 - SMTP backends vary.
-            raise AppError("VERIFICATION_DELIVERY_FAILED", "验证邮件暂时无法送达，请稍后重试。", 503) from error
+        # Deliver after the response: a synchronous send made both latency and
+        # SMTP failures reveal whether the address was already registered.
+        background.add_task(_deliver_verification_email, body.email, raw_token)
     return {"data": {"accepted": True}, "meta": {"requestId": str(request_id(request))}}
 
 
@@ -122,16 +135,17 @@ async def login_user(
 
 @router.post("/logout", status_code=204)
 async def logout_user(
-    request: Request,
-    response: Response,
     identity: tuple[User, UserSession] = Depends(require_csrf),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
     await revoke_session(session, identity[1])
     await session.commit()
     settings = get_settings()
+    # The injected Response has no status code; returning it directly made the
+    # server drop the connection, so build the 204 explicitly.
+    response = Response(status_code=204)
     response.delete_cookie(settings.session_cookie_name, path="/")
-    response.delete_cookie(settings.csrf_cookie_name, path="/")
+    response.delete_cookie(settings.csrf_cookie_name, path="/", domain=settings.csrf_cookie_domain)
     return response
 
 

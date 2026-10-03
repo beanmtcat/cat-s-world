@@ -1,6 +1,6 @@
 # Backend
 
-后端采用 **Python 3.12+ / FastAPI / SQLAlchemy / Alembic / PostgreSQL**，异步导入任务使用 **Celery + Redis**。Python 3.9/3.10/3.11 不在支持范围内，避免在本地与生产使用不同语法或密码学实现。
+后端采用 **Python 3.12+ / FastAPI / SQLAlchemy / Alembic / PostgreSQL**，登录/评论限流使用 **Redis**。Python 3.9/3.10/3.11 不在支持范围内，避免在本地与生产使用不同语法或密码学实现。
 
 系统设计、API、数据模型与 Halo 迁移方案见：[系统设计](../docs/系统设计.md)。
 
@@ -13,7 +13,7 @@ backend/
 │   ├── models/       # SQLAlchemy 模型（所有逻辑关联均无数据库外键）
 │   ├── services/     # Markdown、媒体、搜索业务
 │   ├── importers/    # Halo v2 导入适配器
-│   ├── workers/      # Celery 任务
+│   ├── cli/          # 管理命令（创建管理员、导入、清理）
 │   └── main.py       # 应用入口
 ├── alembic/          # 数据库迁移
 ├── tests/

@@ -13,6 +13,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Index,
     Integer,
     LargeBinary,
     String,
@@ -286,6 +287,7 @@ class GalleryItem(IdTimestampValidityMixin, Base):
 
 class VisitEvent(IdTimestampValidityMixin, Base):
     __tablename__ = "mmcat_visit_events"
+    __table_args__ = (Index("ix_mmcat_visit_events_path_occurred_at", "path", "occurred_at"),)
     ip_address: Mapped[str | None] = mapped_column(
         String(64), comment="访问客户端 IP；仅用于站点自有访问统计与安全分析。"
     )
@@ -308,7 +310,11 @@ class VisitEvent(IdTimestampValidityMixin, Base):
 
 class VisitDaily(IdTimestampValidityMixin, Base):
     __tablename__ = "mmcat_visit_daily"
-    __table_args__ = (UniqueConstraint("stat_date", "path", "locale"),)
+    __table_args__ = (
+        UniqueConstraint("stat_date", "path", "locale"),
+        # All-time totals filter by path; the unique index leads with the date.
+        Index("ix_mmcat_visit_daily_path_locale", "path", "locale"),
+    )
     stat_date: Mapped[date] = mapped_column(Date)
     path: Mapped[str] = mapped_column(Text)
     locale: Mapped[str] = mapped_column(String(10), default="zh-CN", server_default="zh-CN")

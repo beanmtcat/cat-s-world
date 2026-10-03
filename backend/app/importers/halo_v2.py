@@ -572,13 +572,3 @@ def read_halo_workdir_bundle_path(path: str) -> HaloWorkdirBundle:
             "HALO_CONTENT_NOT_FOUND", "extensions.data 中未找到可导入的文章及其快照正文。", 422
         )
     return bundle
-
-
-def read_halo_workdir_archive_path(path: str) -> list[HaloCandidate]:
-    """Compatibility wrapper for callers that only need content."""
-    return read_halo_workdir_bundle_path(path).candidates
-
-
-def read_halo_taxonomy_workdir_path(path: str) -> dict[str, dict[str, dict[str, object]]]:
-    """Compatibility wrapper for callers that only need Category and Tag."""
-    return read_halo_workdir_bundle_path(path).taxonomy

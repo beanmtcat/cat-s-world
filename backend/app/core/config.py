@@ -19,7 +19,6 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "test", "production"] = "development"
     app_base_url: AnyHttpUrl = "http://localhost:5173"
-    api_base_url: AnyHttpUrl = "http://localhost:8000"
     database_url: str
     redis_url: str
     trusted_hosts: list[str] = Field(default_factory=list)
@@ -31,6 +30,10 @@ class Settings(BaseSettings):
     # The browser client deliberately reads this non-HttpOnly cookie.  Keeping
     # its name fixed prevents a deployment-only mismatch with the SPA.
     csrf_cookie_name: Literal["mmcat-csrf"] = "mmcat-csrf"
+    # When the SPA and the API live on different hosts of one site (for example
+    # example.com and api.example.com) the SPA can only read the CSRF cookie if
+    # it is scoped to the shared parent domain.  Leave unset for same-origin.
+    csrf_cookie_domain: str | None = None
     session_secret: SecretStr
     hash_ip_secret: SecretStr
     s3_endpoint: AnyHttpUrl
@@ -39,7 +42,6 @@ class Settings(BaseSettings):
     s3_access_key_id: SecretStr
     s3_secret_access_key: SecretStr
     s3_public_base_url: AnyHttpUrl
-    s3_quarantine_prefix: str = "quarantine"
     s3_public_prefix: str = "public"
     antivirus_host: str | None = None
     antivirus_port: int = 3310
@@ -48,8 +50,6 @@ class Settings(BaseSettings):
     smtp_username: SecretStr
     smtp_password: SecretStr
     mail_from: str
-    search_engine_secret_provider: str
-    search_engine_secret_namespace: str
 
     @field_validator("trusted_hosts", "cors_origins", mode="before")
     @classmethod

@@ -29,6 +29,9 @@ async def resolve_redirect(session: AsyncSession, raw_path: str) -> Redirect | N
     redirect = await session.scalar(
         select(Redirect).where(Redirect.isvalid.is_(True), Redirect.from_path == source)
     )
-    if redirect is not None and not redirect.to_path.startswith("/"):
+    # `//host` is protocol-relative and would turn this into an open redirect.
+    if redirect is not None and (
+        not redirect.to_path.startswith("/") or redirect.to_path.startswith("//")
+    ):
         raise AppError("INVALID_REDIRECT_TARGET", "重定向目标配置无效。", 500)
     return redirect

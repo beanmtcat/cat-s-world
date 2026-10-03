@@ -40,17 +40,18 @@ services:
     restart: unless-stopped
     command: server /data --console-address :9001
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID in .env}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY in .env}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live >/dev/null"]
       interval: 5s
       timeout: 3s
       retries: 20
       start_period: 5s
+    # Loopback only: publish these through your reverse proxy, never directly.
     ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
 
@@ -61,15 +62,35 @@ services:
       minio:
         condition: service_healthy
     environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID in .env}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY in .env}
       S3_BUCKET: ${S3_BUCKET:-mmcat}
+    # The API gets its own account limited to one bucket instead of MinIO root.
     entrypoint: >-
       /bin/sh -ec '
-      mc alias set local http://minio:9000 "$$S3_ACCESS_KEY_ID" "$$S3_SECRET_ACCESS_KEY" &&
+      mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
       mc mb --ignore-existing "local/$$S3_BUCKET" &&
-      mc anonymous set none "local/$$S3_BUCKET"'
+      mc anonymous set none "local/$$S3_BUCKET" &&
+      printf "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\",\"s3:DeleteObject\",\"s3:ListBucket\",\"s3:GetBucketLocation\"],\"Resource\":[\"arn:aws:s3:::%s\",\"arn:aws:s3:::%s/*\"]}]}" "$$S3_BUCKET" "$$S3_BUCKET" > /tmp/mmcat-app.json &&
+      mc admin policy create local mmcat-app /tmp/mmcat-app.json &&
+      (mc admin user info local "$$S3_ACCESS_KEY_ID" >/dev/null 2>&1 || mc admin user add local "$$S3_ACCESS_KEY_ID" "$$S3_SECRET_ACCESS_KEY") &&
+      (mc admin policy attach local mmcat-app --user "$$S3_ACCESS_KEY_ID" || true)'
     restart: "no"
+
+  clamav:
+    container_name: mmcat-clamav
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    volumes:
+      - clamav_data:/var/lib/clamav
 
   api:
     container_name: mmcat-api
@@ -78,11 +99,16 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-production}
       APP_BASE_URL: ${APP_BASE_URL:?Set APP_BASE_URL in .env}
-      API_BASE_URL: ${API_BASE_URL:?Set API_BASE_URL in .env}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mmcat}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mmcat}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       TRUSTED_HOSTS: ${TRUSTED_HOSTS:?Set TRUSTED_HOSTS in .env}
       CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS in .env}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-__Host-mmcat-session}
+      CSRF_COOKIE_DOMAIN: ${CSRF_COOKIE_DOMAIN:-}
+      # Addresses of the reverse proxies whose X-Forwarded-For is trusted.  Without
+      # this every request appears to come from the proxy and IP rate limits become global.
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:?Set FORWARDED_ALLOW_IPS in .env}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
       HASH_IP_SECRET: ${HASH_IP_SECRET:?Set HASH_IP_SECRET in .env}
       S3_ENDPOINT: http://minio:9000
@@ -91,15 +117,13 @@ services:
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:?Set S3_PUBLIC_BASE_URL in .env}
-      ANTIVIRUS_HOST: ${ANTIVIRUS_HOST:?Set ANTIVIRUS_HOST in .env}
+      ANTIVIRUS_HOST: ${ANTIVIRUS_HOST:-clamav}
       ANTIVIRUS_PORT: ${ANTIVIRUS_PORT:-3310}
       SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST in .env}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:?Set SMTP_USERNAME in .env}
       SMTP_PASSWORD: ${SMTP_PASSWORD:?Set SMTP_PASSWORD in .env}
       MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM in .env}
-      SEARCH_ENGINE_SECRET_PROVIDER: ${SEARCH_ENGINE_SECRET_PROVIDER:-environment}
-      SEARCH_ENGINE_SECRET_NAMESPACE: ${SEARCH_ENGINE_SECRET_NAMESPACE:-mmcat/search-engines}
     depends_on:
       postgres:
         condition: service_healthy
@@ -107,11 +131,15 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      clamav:
+        condition: service_healthy
+    # Loopback only: terminate TLS in a reverse proxy in front of the API.
     ports:
-      - "${API_PORT:-8000}:8000"
-    command: ["sh", "-ec", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    command: ["sh", "-ec", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  clamav_data:

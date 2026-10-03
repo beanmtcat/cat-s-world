@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -96,7 +97,18 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    fields = {"errors": exc.errors(include_url=False)}
+    # Never echo submitted values (passwords) back, and stringify the exception
+    # objects pydantic keeps in `ctx` so the payload is always JSON-serializable.
+    errors = [
+        {
+            "type": item.get("type"),
+            "loc": item.get("loc"),
+            "msg": item.get("msg"),
+            "ctx": {key: str(value) for key, value in (item.get("ctx") or {}).items()},
+        }
+        for item in exc.errors()
+    ]
+    fields = {"errors": jsonable_encoder(errors)}
     return _error(request, 422, "VALIDATION_ERROR", "请求参数不合法。", fields)
 
 

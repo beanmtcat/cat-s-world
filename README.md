@@ -3,7 +3,7 @@
 项目按前后端目录组织：
 
 - `frontend/`：React + Vite 前端应用
-- `backend/`：Python 3.12+ FastAPI、SQLAlchemy、Alembic、Celery/Redis 服务
+- `backend/`：Python 3.12+ FastAPI、SQLAlchemy、Alembic、Redis 限流服务
 - `content/`：Halo v2/Markdown 的受控导入、导出和离线备份目录（线上正文仍以 PostgreSQL 为准）
 - `docs/系统设计.md`：数据、接口、安全、SEO、Halo 迁移与验收的唯一设计契约
 

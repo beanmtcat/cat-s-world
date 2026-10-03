@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Literal
-from urllib.parse import urlsplit
 from uuid import UUID
 
 from pydantic import Field, field_validator
 
-from app.schemas.common import ApiModel
+from app.schemas.common import ApiModel, clean_web_url
 
 
 class PostSummary(ApiModel):
@@ -44,6 +43,11 @@ class StudioPostCreate(ApiModel):
     category_ids: list[UUID] = Field(default_factory=list, max_length=16)
     tag_ids: list[UUID] = Field(default_factory=list, max_length=48)
 
+    @field_validator("cover_url")
+    @classmethod
+    def validate_cover_url(cls, value: str | None) -> str | None:
+        return clean_web_url(value)
+
 
 class StudioPostUpdate(ApiModel):
     """后台文章编辑与发布载荷；未给出的字段保持原值。"""
@@ -59,6 +63,11 @@ class StudioPostUpdate(ApiModel):
     content_format: Literal["markdown", "html"] | None = None
     category_ids: list[UUID] | None = Field(default=None, max_length=16)
     tag_ids: list[UUID] | None = Field(default=None, max_length=48)
+
+    @field_validator("cover_url")
+    @classmethod
+    def validate_cover_url(cls, value: str | None) -> str | None:
+        return clean_web_url(value)
 
 
 class StudioTaxonomyInput(ApiModel):
@@ -94,6 +103,14 @@ class StudioToolInput(ApiModel):
     locale: Literal["zh-CN", "en-US"] = "zh-CN"
     sort_order: int = Field(default=0, ge=0, le=100000)
     is_featured: bool = True
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        cleaned = clean_web_url(value, allow_site_path=False)
+        if cleaned is None:
+            raise ValueError("链接必须是完整的 http 或 https URL。")
+        return cleaned
 
 
 class StudioNavigationInput(ApiModel):
@@ -145,13 +162,7 @@ class StudioFriendLinkInput(ApiModel):
     @field_validator("url", "logo_url")
     @classmethod
     def validate_external_url(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        value = value.strip()
-        parsed = urlsplit(value)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ValueError("链接必须是完整的 http 或 https URL。")
-        return value
+        return clean_web_url(value, allow_site_path=False)
 
 
 class StudioGalleryInput(ApiModel):
@@ -164,6 +175,11 @@ class StudioGalleryInput(ApiModel):
     visibility: Literal["public", "unlisted", "private"] = "public"
     sort_order: int = Field(default=0, ge=0, le=100000)
     media_ids: list[UUID] = Field(default_factory=list, max_length=200)
+
+    @field_validator("cover_url")
+    @classmethod
+    def validate_cover_url(cls, value: str | None) -> str | None:
+        return clean_web_url(value)
 
 
 class StudioUserUpdate(ApiModel):
@@ -201,6 +217,11 @@ class StudioSitePropertiesUpdate(ApiModel):
     seo_noindex: bool | None = None
     registration_enabled: bool | None = None
     comments_moderation_enabled: bool | None = None
+
+    @field_validator("logo_url", "favicon_url", "default_og_image_url")
+    @classmethod
+    def validate_brand_url(cls, value: str | None) -> str | None:
+        return clean_web_url(value)
 
 
 class StudioCommentModeration(ApiModel):

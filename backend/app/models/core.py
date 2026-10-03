@@ -335,6 +335,7 @@ class Redirect(IdTimestampValidityMixin, Base):
 
 class AuditLog(IdTimestampValidityMixin, Base):
     __tablename__ = "mmcat_audit_logs"
+    __table_args__ = (Index("ix_mmcat_audit_logs_ctime", "ctime"),)
 
     actor_id: Mapped[UUID | None] = mapped_column(index=True)
     action: Mapped[str] = mapped_column(String(120), index=True)

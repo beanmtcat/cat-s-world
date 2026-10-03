@@ -19,6 +19,12 @@ def verify_password(password: str, password_hash: str) -> bool:
     return _password_hasher.verify(password, password_hash)
 
 
+def hash_session_token(value: str) -> str:
+    """Digest session and CSRF tokens with the dedicated session secret."""
+    secret = get_settings().session_secret.get_secret_value().encode()
+    return hmac.new(secret, value.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
 def hash_identifier(value: str) -> str:
     secret = get_settings().hash_ip_secret.get_secret_value().encode()
     return hmac.new(secret, value.encode("utf-8"), hashlib.sha256).hexdigest()

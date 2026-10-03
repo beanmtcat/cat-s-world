@@ -1,5 +1,44 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, BookOpenText, Bot, Check, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Copy, Download, Eye, File, FileText, FolderTree, Grid2X2, Image as ImageIcon, Images, LayoutDashboard, Link2, List, ListTree, LogOut, Menu, MessageSquare, MoreHorizontal, Music, Pencil, Plus, RefreshCw, RotateCcw, Search, Settings2, Smile, Trash2, UploadCloud, UsersRound, Video, X } from 'lucide-react';
+import {
+  Activity,
+  BookOpenText,
+  Bot,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  Copy,
+  Download,
+  Eye,
+  File,
+  FileText,
+  FolderTree,
+  Grid2X2,
+  Image as ImageIcon,
+  Images,
+  LayoutDashboard,
+  Link2,
+  List,
+  ListTree,
+  LogOut,
+  Menu,
+  MessageSquare,
+  MoreHorizontal,
+  Music,
+  Pencil,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Settings2,
+  Smile,
+  Trash2,
+  UploadCloud,
+  UsersRound,
+  Video,
+  X,
+} from 'lucide-react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -12,118 +51,1564 @@ import { markdown } from '@codemirror/lang-markdown';
 import TurndownService from 'turndown';
 import { ApiError, authApi, studioApi } from './api/client';
 
-const menu = [[LayoutDashboard, '概览'], [FileText, '文章'], [BookOpenText, '独立页'], [FolderTree, '分类标签'], [MessageSquare, '评论'], [Bot, 'AI 工具'], [Link2, '友情链接'], [ImageIcon, '附件管理'], [Images, '图库'], [UsersRound, '用户管理'], [ListTree, '菜单管理'], [Activity, '站点状态'], [FileText, '审计日志'], [Settings2, '站点设置']];
-const blankPost = { title: '', slug: '', summary: '', content: '<p>开始撰写…</p>', contentFormat: 'html', coverUrl: '', locale: 'zh-CN', categoryIds: [], tagIds: [] };
-const blankPage = { title: '', slug: '', summary: '', content: '', contentFormat: 'markdown', locale: 'zh-CN', status: 'draft', visibility: 'private', seoTitle: '', seoDescription: '' };
+const menu = [
+  [LayoutDashboard, '概览'],
+  [FileText, '文章'],
+  [BookOpenText, '独立页'],
+  [MessageSquare, '评论'],
+  [Bot, 'AI 工具'],
+  [Link2, '友情链接'],
+  [ImageIcon, '附件管理'],
+  [Images, '图库'],
+  [UsersRound, '用户管理'],
+  [ListTree, '菜单管理'],
+  [Activity, '站点状态'],
+  [FileText, '审计日志'],
+  [Settings2, '站点设置'],
+];
+const blankPost = {
+  title: '',
+  slug: '',
+  summary: '',
+  content: '<p>开始撰写…</p>',
+  contentFormat: 'html',
+  coverUrl: '',
+  locale: 'zh-CN',
+  categoryIds: [],
+  tagIds: [],
+};
+const blankPage = {
+  title: '',
+  slug: '',
+  summary: '',
+  content: '',
+  contentFormat: 'markdown',
+  locale: 'zh-CN',
+  status: 'draft',
+  visibility: 'private',
+  seoTitle: '',
+  seoDescription: '',
+};
 const blankTaxonomy = { name: '', slug: '', description: '', locale: 'zh-CN', sortOrder: 0, isHomeVisible: true };
-const blankTool = { name: '', slug: '', url: '', description: '', provider: '', category: '', iconKey: '', locale: 'zh-CN', sortOrder: 0, isFeatured: true };
-const blankNavigation = { menuId: '', label: '', url: '/', targetType: 'custom', targetIds: [], iconKey: '', locale: 'zh-CN', location: 'header', parentId: null, sortOrder: 0, openNewTab: false };
+const blankTool = {
+  name: '',
+  slug: '',
+  url: '',
+  description: '',
+  provider: '',
+  category: '',
+  iconKey: '',
+  locale: 'zh-CN',
+  sortOrder: 0,
+  isFeatured: true,
+};
+const blankNavigation = {
+  menuId: '',
+  label: '',
+  url: '/',
+  targetType: 'custom',
+  targetIds: [],
+  iconKey: '',
+  locale: 'zh-CN',
+  location: 'header',
+  parentId: null,
+  sortOrder: 0,
+  openNewTab: false,
+};
 const blankNavigationMenu = { name: '', menuKey: '', locale: 'zh-CN', location: 'header', sortOrder: 0 };
-const blankStatusNode = { code: '', displayNameZh: '', displayNameEn: '', region: '', endpoint: '', checkType: 'http', httpMethod: 'HEAD', expectedStatus: 200, timeoutMs: 5000, intervalSeconds: 60, sortOrder: 0 };
-const blankFriendLink = { name: '', url: '', logoUrl: '', description: '', rel: 'noopener noreferrer', target: '_blank', locale: 'zh-CN', sortOrder: 0 };
-const blankGallery = { name: '', slug: '', description: '', coverUrl: '', locale: 'zh-CN', status: 'draft', visibility: 'public', sortOrder: 0, mediaIds: [] };
+const blankStatusNode = {
+  code: '',
+  displayNameZh: '',
+  displayNameEn: '',
+  region: '',
+  endpoint: '',
+  checkType: 'http',
+  httpMethod: 'HEAD',
+  expectedStatus: 200,
+  timeoutMs: 5000,
+  intervalSeconds: 60,
+  sortOrder: 0,
+};
+const blankFriendLink = {
+  name: '',
+  url: '',
+  logoUrl: '',
+  description: '',
+  rel: 'noopener noreferrer',
+  target: '_blank',
+  locale: 'zh-CN',
+  sortOrder: 0,
+};
+const blankGallery = {
+  name: '',
+  slug: '',
+  description: '',
+  coverUrl: '',
+  locale: 'zh-CN',
+  status: 'draft',
+  visibility: 'public',
+  sortOrder: 0,
+  mediaIds: [],
+};
 const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
-const slugify = value => value.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-const statusName = post => post.publishedAt ? '已发布' : '草稿';
-function Field({ label, hint, children }) { return <label className="studioFormField"><span>{label}</span>{children}{hint && <small className="fieldHint">{hint}</small>}</label>; }
-function Empty({ children = '暂无内容。' }) { return <p className="emptyState">{children}</p>; }
-function StudioToast({ toast, onDismiss }) { if (!toast) return null; return <div className={`studioToast ${toast.type}`} role="status" aria-live="polite"><span>{toast.type === 'success' ? <Check size={18}/> : <CircleAlert size={18}/>}</span><p>{toast.message}</p><button aria-label="关闭提示" onClick={onDismiss}><X size={16}/></button></div>; }
-function AdminListToolbar({ query, onQuery, children }) { return <div className="adminListToolbar"><label className="adminListCheck"><input type="checkbox" aria-label="选择当前页全部项目"/></label><div className="adminListSearch"><Search size={16}/><input value={query} onChange={event => onQuery(event.target.value)} placeholder="输入关键词搜索"/></div><div className="adminListFilters">{children}<button type="button" title="刷新列表" onClick={() => window.location.reload()}><RefreshCw size={16}/></button></div></div>; }
-function AdminListFooter({ total }) { return <footer className="adminListFooter"><span>共 {total} 项</span><nav><button disabled aria-label="上一页"><ChevronLeft size={16}/></button><button disabled aria-label="下一页"><ChevronRight size={16}/></button><span>1 / 1</span><label>每页 <select defaultValue="20"><option>20</option><option>50</option></select> 项</label></nav></footer>; }
+const slugify = (value) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+// Page buttons to render: everything when short, otherwise first, last and the neighbours of the current page.
+const pageWindow = (page, totalPages) =>
+  totalPages <= 7
+    ? Array.from({ length: totalPages }, (_, index) => index + 1)
+    : Array.from(new Set([1, Math.max(1, page - 1), Math.min(totalPages, page), Math.min(totalPages, page + 1), totalPages]));
+const statusName = (post) => (post.publishedAt ? '已发布' : '草稿');
+function Field({ label, hint, children }) {
+  return (
+    <label className="studioFormField">
+      <span>{label}</span>
+      {children}
+      {hint && <small className="fieldHint">{hint}</small>}
+    </label>
+  );
+}
+function Empty({ children = '暂无内容。' }) {
+  return <p className="emptyState">{children}</p>;
+}
+function StudioToast({ toast, onDismiss }) {
+  if (!toast) return null;
+  return (
+    <div className={`studioToast ${toast.type}`} role="status" aria-live="polite">
+      <span>{toast.type === 'success' ? <Check size={18} /> : <CircleAlert size={18} />}</span>
+      <p>{toast.message}</p>
+      <button aria-label="关闭提示" onClick={onDismiss}>
+        <X size={16} />
+      </button>
+    </div>
+  );
+}
+function AdminListToolbar({ query, onQuery, children }) {
+  return (
+    <div className="adminListToolbar">
+      <label className="adminListCheck">
+        <input type="checkbox" aria-label="选择当前页全部项目" />
+      </label>
+      <div className="adminListSearch">
+        <Search size={16} />
+        <input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="输入关键词搜索" />
+      </div>
+      <div className="adminListFilters">
+        {children}
+        <button type="button" title="刷新列表" onClick={() => window.location.reload()}>
+          <RefreshCw size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+function AdminListFooter({ total }) {
+  return (
+    <footer className="adminListFooter">
+      <span>共 {total} 项</span>
+      <nav>
+        <button disabled aria-label="上一页">
+          <ChevronLeft size={16} />
+        </button>
+        <button disabled aria-label="下一页">
+          <ChevronRight size={16} />
+        </button>
+        <span>1 / 1</span>
+        <label>
+          每页{' '}
+          <select defaultValue="20">
+            <option>20</option>
+            <option>50</option>
+          </select>{' '}
+          项
+        </label>
+      </nav>
+    </footer>
+  );
+}
 
 export function Modal({ title, children, onClose, actions }) {
-  useEffect(() => { const close = event => event.key === 'Escape' && onClose(); window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, [onClose]);
-  return <div className="modalScrim" role="presentation" onMouseDown={onClose}><section className="modalCard" role="dialog" aria-modal="true" aria-label={title} onMouseDown={event => event.stopPropagation()}><header><h2>{title}</h2><button aria-label="关闭" onClick={onClose}><X size={20}/></button></header><div className="modalBody">{children}</div>{actions && <footer>{actions}</footer>}</section></div>;
+  useEffect(() => {
+    const close = (event) => event.key === 'Escape' && onClose();
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [onClose]);
+  return (
+    <div className="modalScrim" role="presentation" onMouseDown={onClose}>
+      <section className="modalCard" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.stopPropagation()}>
+        <header>
+          <h2>{title}</h2>
+          <button aria-label="关闭" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </header>
+        <div className="modalBody">{children}</div>
+        {actions && <footer>{actions}</footer>}
+      </section>
+    </div>
+  );
 }
 
 function Overview({ dashboard, loading, setActive, onNewPost }) {
-  const metrics = [['全部文章', dashboard?.totalPosts, FileText], ['已发布', dashboard?.publishedPosts, Check], ['草稿', dashboard?.draftPosts, Pencil], ['待审核评论', dashboard?.pendingComments, MessageSquare]];
-  return <><div className="studioHeading"><div><p>内容中台</p><h1>管理内容、发布与站点配置。</h1></div><button className="primaryButton" onClick={onNewPost}><Plus size={17}/>写文章</button></div><section className="metricGrid studioMetrics">{metrics.map(([label, value, Icon]) => <article key={label}><Icon size={18}/><span>{label}</span><b>{loading ? '—' : value ?? 0}</b></article>)}</section><section className="studioPanel"><header><div><h2>最近更新</h2><p>继续编辑文章，或切换模块维护其他站点内容。</p></div><button className="textButton" onClick={() => setActive('文章')}>全部文章</button></header>{dashboard?.recentPosts?.length ? <div className="studioPosts">{dashboard.recentPosts.map(post => <article key={post.id}><div><b>{post.title}</b><span>/{post.slug} · {post.locale}</span></div><small>{statusName(post)}</small></article>)}</div> : <Empty>暂无文章，创建第一篇 Markdown 文章开始。</Empty>}</section></>;
+  const metrics = [
+    ['全部文章', dashboard?.totalPosts, FileText],
+    ['已发布', dashboard?.publishedPosts, Check],
+    ['草稿', dashboard?.draftPosts, Pencil],
+    ['待审核评论', dashboard?.pendingComments, MessageSquare],
+  ];
+  return (
+    <>
+      <div className="studioHeading">
+        <div>
+          <p>内容中台</p>
+          <h1>管理内容、发布与站点配置。</h1>
+        </div>
+        <button className="primaryButton" onClick={onNewPost}>
+          <Plus size={17} />
+          写文章
+        </button>
+      </div>
+      <section className="metricGrid studioMetrics">
+        {metrics.map(([label, value, Icon]) => (
+          <article key={label}>
+            <Icon size={18} />
+            <span>{label}</span>
+            <b>{loading ? '—' : (value ?? 0)}</b>
+          </article>
+        ))}
+      </section>
+      <section className="studioPanel">
+        <header>
+          <div>
+            <h2>最近更新</h2>
+            <p>继续编辑文章，或切换模块维护其他站点内容。</p>
+          </div>
+          <button className="textButton" onClick={() => setActive('文章')}>
+            全部文章
+          </button>
+        </header>
+        {dashboard?.recentPosts?.length ? (
+          <div className="studioPosts">
+            {dashboard.recentPosts.map((post) => (
+              <article key={post.id}>
+                <div>
+                  <b>{post.title}</b>
+                  <span>
+                    /{post.slug} · {post.locale}
+                  </span>
+                </div>
+                <small>{statusName(post)}</small>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty>暂无文章，创建第一篇 Markdown 文章开始。</Empty>
+        )}
+      </section>
+    </>
+  );
 }
 
-function PostManager({ posts, meta, loading, categories, tags, inTrash, onNew, onEdit, onDelete, onRestore, onToggle, onPageChange, onToggleTrash, navigate }) {
-  const [query, setQuery] = useState(''); const [status, setStatus] = useState('all'); const [visibility, setVisibility] = useState('all'); const [category, setCategory] = useState('all'); const [tag, setTag] = useState('all'); const [openMenu, setOpenMenu] = useState(''); const page = meta?.page || 1; const totalPages = meta?.totalPages || 0;
-  const visible = posts.filter(post => {
+function PostManager({
+  posts,
+  meta,
+  loading,
+  categories,
+  tags,
+  inTrash,
+  onNew,
+  onEdit,
+  onDelete,
+  onRestore,
+  onToggle,
+  onPageChange,
+  onToggleTrash,
+  navigate,
+}) {
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('all');
+  const [visibility, setVisibility] = useState('all');
+  const [category, setCategory] = useState('all');
+  const [tag, setTag] = useState('all');
+  const [openMenu, setOpenMenu] = useState('');
+  const page = meta?.page || 1;
+  const totalPages = meta?.totalPages || 0;
+  const visible = posts.filter((post) => {
     const haystack = `${post.title} ${post.slug} ${(post.categoryNames || []).join(' ')} ${(post.tagNames || []).join(' ')}`.toLowerCase();
-    return (!query || haystack.includes(query.toLowerCase())) && (status === 'all' || post.status === status) && (visibility === 'all' || post.visibility === visibility) && (category === 'all' || (post.categoryIds || []).includes(category)) && (tag === 'all' || (post.tagIds || []).includes(tag));
+    return (
+      (!query || haystack.includes(query.toLowerCase())) &&
+      (status === 'all' || post.status === status) &&
+      (visibility === 'all' || post.visibility === visibility) &&
+      (category === 'all' || (post.categoryIds || []).includes(category)) &&
+      (tag === 'all' || (post.tagIds || []).includes(tag))
+    );
   });
-  const pageNumbers = totalPages <= 7 ? Array.from({ length: totalPages }, (_, index) => index + 1) : Array.from(new Set([1, ...Array.from({ length: 3 }, (_, index) => Math.max(1, Math.min(totalPages, page - 1 + index))), totalPages]));
-  const dateText = post => new Date(post.publishedAt || post.updatedAt || post.createdAt).toLocaleDateString('zh-CN');
-  return <>
-    <div className="studioHeading postLibraryHeading"><div><p>内容管理</p><h1>{inTrash ? '文章回收站' : '文章'} <small>{meta?.total ?? 0} 篇</small></h1></div><div>{inTrash ? <button className="secondaryButton" onClick={onToggleTrash}>返回文章</button> : <><button className="secondaryButton" onClick={() => navigate('/studio/taxonomy')}>分类标签</button><button className="secondaryButton" onClick={onToggleTrash}><Trash2 size={16}/>回收站</button><button className="primaryButton" onClick={onNew}><Plus size={17}/>新建文章</button></>}</div></div>
-    <section className="postLibrary">
-      <div className="postLibraryToolbar"><label className="postSelectAll"><input type="checkbox" aria-label="选择当前页全部文章"/></label><div className="postLibrarySearch"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索文章标题、地址或标签"/></div><div className="postLibraryFilters"><label>状态<select value={status} onChange={event => setStatus(event.target.value)}><option value="all">全部</option><option value="published">已发布</option><option value="draft">草稿</option><option value="archived">已归档</option></select></label><label>可见性<select value={visibility} onChange={event => setVisibility(event.target.value)}><option value="all">全部</option><option value="public">公开</option><option value="unlisted">不收录</option><option value="private">私有</option></select></label><label>分类<select value={category} onChange={event => setCategory(event.target.value)}><option value="all">全部</option>{categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>标签<select value={tag} onChange={event => setTag(event.target.value)}><option value="all">全部</option>{tags.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div></div>
-      {loading ? <Empty>正在读取文章…</Empty> : visible.length ? <>
-        <div className="postLibraryRows">{visible.map(post => <article key={post.id}>
-          <label><input type="checkbox" aria-label={`选择 ${post.title}`}/></label>
-          <button className="postListCover" onClick={() => !inTrash && onEdit(post)} aria-label={inTrash ? post.title : `编辑 ${post.title}`}>{post.coverUrl ? <img src={post.coverUrl} alt=""/> : <FileText size={24}/>}</button>
-          <div className="postListMain"><button disabled={inTrash} onClick={() => !inTrash && onEdit(post)}>{post.title}</button><p>{inTrash ? `删除于 ${dateText({ publishedAt: post.deletedAt, updatedAt: post.updatedAt, createdAt: post.createdAt })}` : <>{post.categoryNames?.length ? `分类：${post.categoryNames.join(' · ')}` : '未分类'} <span>·</span> {post.viewCount || 0} 阅读 <span>·</span> {post.commentCount || 0} 条评论</>}</p><div>{(post.tagNames || []).slice(0, 4).map(name => <em key={name}>{name}</em>)}</div></div>
-          <div className="postListMeta">{inTrash ? <button className="secondaryButton" onClick={() => onRestore(post)}><RotateCcw size={16}/>恢复</button> : <><span className={post.status === 'published' ? 'publishedPill' : 'draftPill'}>{post.status === 'published' ? '已发布' : post.status === 'archived' ? '已归档' : '草稿'}</span><button onClick={() => navigate(`/archives/${post.slug}`)} aria-label="预览文章"><Eye size={17}/></button><time>{dateText(post)}</time><div className="postMore"><button onClick={() => setOpenMenu(openMenu === post.id ? '' : post.id)} aria-label="更多操作"><MoreHorizontal size={20}/></button>{openMenu === post.id && <div><button onClick={() => onEdit(post)}><Pencil size={15}/>编辑</button><button onClick={() => onToggle(post)}>{post.publishedAt ? '撤回发布' : '发布文章'}</button><button className="danger" onClick={() => onDelete(post)}><Trash2 size={15}/>移入回收站</button></div>}</div></>}</div>
-        </article>)}</div>
-        {totalPages > 1 && <nav className="studioPagination postLibraryPagination" aria-label="文章分页"><button disabled={page === 1} onClick={() => onPageChange(page - 1)}>上一页</button>{pageNumbers.map((number, index) => <React.Fragment key={number}>{index > 0 && number - pageNumbers[index - 1] > 1 && <span>…</span>}<button className={number === page ? 'active' : ''} onClick={() => onPageChange(number)}>{number}</button></React.Fragment>)}<button disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>下一页</button></nav>}
-      </> : <Empty>{inTrash ? '回收站为空。' : '没有匹配的文章。'}</Empty>}
-    </section>
-  </>;
+  const pageNumbers = pageWindow(page, totalPages);
+  const dateText = (post) => new Date(post.publishedAt || post.updatedAt || post.createdAt).toLocaleDateString('zh-CN');
+  return (
+    <>
+      <div className="studioHeading postLibraryHeading">
+        <div>
+          <p>内容管理</p>
+          <h1>
+            {inTrash ? '文章回收站' : '文章'} <small>{meta?.total ?? 0} 篇</small>
+          </h1>
+        </div>
+        <div>
+          {inTrash ? (
+            <button className="secondaryButton" onClick={onToggleTrash}>
+              返回文章
+            </button>
+          ) : (
+            <>
+              <button className="secondaryButton" onClick={() => navigate('/studio/categories')}>
+                分类
+              </button>
+              <button className="secondaryButton" onClick={() => navigate('/studio/tags')}>
+                标签
+              </button>
+              <button className="secondaryButton" onClick={onToggleTrash}>
+                <Trash2 size={16} />
+                回收站
+              </button>
+              <button className="primaryButton" onClick={onNew}>
+                <Plus size={17} />
+                新建文章
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      <section className="postLibrary">
+        <div className="postLibraryToolbar">
+          <label className="postSelectAll">
+            <input type="checkbox" aria-label="选择当前页全部文章" />
+          </label>
+          <div className="postLibrarySearch">
+            <Search size={17} />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索文章标题、地址或标签" />
+          </div>
+          <div className="postLibraryFilters">
+            <label>
+              状态
+              <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                <option value="all">全部</option>
+                <option value="published">已发布</option>
+                <option value="draft">草稿</option>
+                <option value="archived">已归档</option>
+              </select>
+            </label>
+            <label>
+              可见性
+              <select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
+                <option value="all">全部</option>
+                <option value="public">公开</option>
+                <option value="unlisted">不收录</option>
+                <option value="private">私有</option>
+              </select>
+            </label>
+            <label>
+              分类
+              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                <option value="all">全部</option>
+                {categories.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              标签
+              <select value={tag} onChange={(event) => setTag(event.target.value)}>
+                <option value="all">全部</option>
+                {tags.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+        {loading ? (
+          <Empty>正在读取文章…</Empty>
+        ) : visible.length ? (
+          <>
+            <div className="postLibraryRows">
+              {visible.map((post) => (
+                <article key={post.id}>
+                  <label>
+                    <input type="checkbox" aria-label={`选择 ${post.title}`} />
+                  </label>
+                  <button
+                    className="postListCover"
+                    onClick={() => !inTrash && onEdit(post)}
+                    aria-label={inTrash ? post.title : `编辑 ${post.title}`}
+                  >
+                    {post.coverUrl ? <img src={post.coverUrl} alt="" /> : <FileText size={24} />}
+                  </button>
+                  <div className="postListMain">
+                    <button disabled={inTrash} onClick={() => !inTrash && onEdit(post)}>
+                      {post.title}
+                    </button>
+                    <p>
+                      {inTrash ? (
+                        `删除于 ${dateText({ publishedAt: post.deletedAt, updatedAt: post.updatedAt, createdAt: post.createdAt })}`
+                      ) : (
+                        <>
+                          {post.categoryNames?.length ? `分类：${post.categoryNames.join(' · ')}` : '未分类'} <span>·</span>{' '}
+                          {post.viewCount || 0} 阅读 <span>·</span> {post.commentCount || 0} 条评论
+                        </>
+                      )}
+                    </p>
+                    <div>
+                      {(post.tagNames || []).slice(0, 4).map((name) => (
+                        <em key={name}>{name}</em>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="postListMeta">
+                    {inTrash ? (
+                      <button className="secondaryButton" onClick={() => onRestore(post)}>
+                        <RotateCcw size={16} />
+                        恢复
+                      </button>
+                    ) : (
+                      <>
+                        <span className={post.status === 'published' ? 'publishedPill' : 'draftPill'}>
+                          {post.status === 'published' ? '已发布' : post.status === 'archived' ? '已归档' : '草稿'}
+                        </span>
+                        <button onClick={() => navigate(`/archives/${post.slug}`)} aria-label="预览文章">
+                          <Eye size={17} />
+                        </button>
+                        <time>{dateText(post)}</time>
+                        <div className="postMore">
+                          <button onClick={() => setOpenMenu(openMenu === post.id ? '' : post.id)} aria-label="更多操作">
+                            <MoreHorizontal size={20} />
+                          </button>
+                          {openMenu === post.id && (
+                            <div>
+                              <button onClick={() => onEdit(post)}>
+                                <Pencil size={15} />
+                                编辑
+                              </button>
+                              <button onClick={() => onToggle(post)}>{post.publishedAt ? '撤回发布' : '发布文章'}</button>
+                              <button className="danger" onClick={() => onDelete(post)}>
+                                <Trash2 size={15} />
+                                移入回收站
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+            {totalPages > 1 && (
+              <nav className="studioPagination postLibraryPagination" aria-label="文章分页">
+                <button disabled={page === 1} onClick={() => onPageChange(page - 1)}>
+                  上一页
+                </button>
+                {pageNumbers.map((number, index) => (
+                  <React.Fragment key={number}>
+                    {index > 0 && number - pageNumbers[index - 1] > 1 && <span>…</span>}
+                    <button className={number === page ? 'active' : ''} onClick={() => onPageChange(number)}>
+                      {number}
+                    </button>
+                  </React.Fragment>
+                ))}
+                <button disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>
+                  下一页
+                </button>
+              </nav>
+            )}
+          </>
+        ) : (
+          <Empty>{inTrash ? '回收站为空。' : '没有匹配的文章。'}</Empty>
+        )}
+      </section>
+    </>
+  );
 }
 
-function editorHtml(content, contentFormat) { if (!content) return '<p></p>'; return contentFormat === 'html' ? content : marked.parse(content); }
-function ToolbarButton({ editor, active, label, onClick, children }) { return <button type="button" className={active ? 'active' : ''} onMouseDown={event => event.preventDefault()} onClick={onClick} disabled={!editor} aria-label={label} title={label}>{children}</button>; }
+function editorHtml(content, contentFormat) {
+  if (!content) return '<p></p>';
+  return contentFormat === 'html' ? content : marked.parse(content);
+}
+function ToolbarButton({ editor, active, label, onClick, children }) {
+  return (
+    <button
+      type="button"
+      className={active ? 'active' : ''}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+      disabled={!editor}
+      aria-label={label}
+      title={label}
+    >
+      {children}
+    </button>
+  );
+}
 function EditorAttachmentDialog({ onClose, onInsert }) {
-  const picker = useRef(null); const [assets, setAssets] = useState([]); const [galleries, setGalleries] = useState([]); const [query, setQuery] = useState(''); const [group, setGroup] = useState('all'); const [sort, setSort] = useState('newest'); const [view, setView] = useState('grid'); const [page, setPage] = useState(1); const [meta, setMeta] = useState({ page: 1, totalPages: 0, total: 0 }); const [selected, setSelected] = useState(new Set()); const [loading, setLoading] = useState(true); const [uploading, setUploading] = useState(false); const [error, setError] = useState('');
-  const load = async () => { setLoading(true); setError(''); try { const [media, groups] = await Promise.all([studioApi.media({ keyword: query.trim(), gallery_id: group === 'all' ? '' : group, page, page_size: 60, sort }), studioApi.mediaGroups()]); setAssets(media.data || []); setMeta(media.meta || { page, totalPages: 0, total: 0 }); setGalleries(groups.data || []); setSelected(new Set()); } catch (reason) { setError(reason.message || '附件库加载失败。'); } finally { setLoading(false); } };
-  useEffect(() => { const timer = window.setTimeout(load, 220); return () => window.clearTimeout(timer); }, [query, group, sort, page]);
-  const resetPage = action => { setPage(1); action(); };
-  const toggle = id => setSelected(current => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; }); const selectAll = () => setSelected(selected.size === assets.length ? new Set() : new Set(assets.map(asset => asset.id)));
-  const uploadFiles = async files => { if (!files?.length) return; setUploading(true); setError(''); try { const uploaded = []; for (const file of Array.from(files)) { const result = await studioApi.uploadMedia(file); uploaded.push(result.data); } setAssets(current => [...uploaded, ...current]); setSelected(current => new Set([...current, ...uploaded.map(asset => asset.id)])); } catch (reason) { setError(reason.message || '附件上传失败。'); } finally { setUploading(false); } };
-  const confirm = () => { assets.filter(asset => selected.has(asset.id)).forEach(onInsert); onClose(); };
-  const totalPages = meta.totalPages || 0; const pageNumbers = totalPages <= 7 ? Array.from({ length: totalPages }, (_, index) => index + 1) : Array.from(new Set([1, Math.max(1, page - 1), page, Math.min(totalPages, page + 1), totalPages]));
-  return <Modal title="选择附件" onClose={onClose} actions={<><button className="primaryButton" disabled={!selected.size} onClick={confirm}>确认插入{selected.size ? `（${selected.size}）` : ''}</button><button className="secondaryButton" onClick={onClose}>取消</button></>}><div className="editorAttachmentPicker"><div className="editorAttachmentTabs"><b>附件库</b></div><div className="editorAttachmentToolbar"><div className="postLibrarySearch"><Search size={16}/><input value={query} onChange={event => resetPage(() => setQuery(event.target.value))} placeholder="搜索附件名称或地址"/></div><label>排序<select value={sort} onChange={event => resetPage(() => setSort(event.target.value))}><option value="newest">最新上传</option><option value="oldest">最早上传</option><option value="name">文件名称</option></select></label><div className="editorAttachmentView"><button type="button" className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} aria-label="列表视图"><List size={17}/></button><button type="button" className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')} aria-label="网格视图"><Grid2X2 size={17}/></button><button type="button" onClick={load} aria-label="刷新附件"><RefreshCw size={17}/></button></div></div><section className="editorAttachmentGroups"><b>分组</b><div><button className={group === 'all' ? 'active' : ''} onClick={() => resetPage(() => setGroup('all'))}>全部</button>{galleries.map(item => <button className={group === item.id ? 'active' : ''} key={item.id} onClick={() => resetPage(() => setGroup(item.id))}>{item.name}</button>)}</div></section><div className="editorAttachmentSelection"><input type="checkbox" checked={assets.length > 0 && selected.size === assets.length} onChange={selectAll}/> <span>选择当前页</span><input ref={picker} type="file" multiple hidden onChange={event => uploadFiles(event.target.files)}/><button className="secondaryButton" disabled={uploading} onClick={() => picker.current?.click()}><UploadCloud size={16}/>{uploading ? '上传中…' : '上传附件'}</button></div><p>图片会插入正文；文档、音频、压缩包等会插入下载链接。</p>{error && <p className="editorAttachmentError">{error}</p>}{loading ? <Empty>正在读取附件库…</Empty> : assets.length ? <div className={`editorAttachmentGrid ${view === 'list' ? 'isList' : ''}`}>{assets.map(asset => <label key={asset.id} className={selected.has(asset.id) ? 'selected' : ''}><input type="checkbox" checked={selected.has(asset.id)} onChange={() => toggle(asset.id)}/><span>{asset.mimeType?.startsWith('image/') ? <ImageIcon size={20}/> : <File size={20}/>}</span>{asset.mimeType?.startsWith('image/') && <img src={asset.sourceUrl} alt="" loading="lazy"/>}<b>{asset.originalName || '未命名附件'}</b><small>{readableBytes(asset.byteSize)}</small></label>)}</div> : <Empty>没有匹配的附件。</Empty>}{totalPages > 1 && <nav className="editorAttachmentPagination" aria-label="附件分页"><span>第 {page} / {totalPages} 页，共 {meta.total} 项</span><button disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>上一页</button>{pageNumbers.map((number, index) => <React.Fragment key={number}>{index > 0 && number - pageNumbers[index - 1] > 1 && <i>…</i>}<button className={number === page ? 'active' : ''} disabled={loading} onClick={() => setPage(number)}>{number}</button></React.Fragment>)}<button disabled={page === totalPages || loading} onClick={() => setPage(page + 1)}>下一页</button></nav>}</div></Modal>;
+  const picker = useRef(null);
+  const [assets, setAssets] = useState([]);
+  const [galleries, setGalleries] = useState([]);
+  const [query, setQuery] = useState('');
+  const [group, setGroup] = useState('all');
+  const [sort, setSort] = useState('newest');
+  const [view, setView] = useState('grid');
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 0, total: 0 });
+  const [selected, setSelected] = useState(new Set());
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [media, groups] = await Promise.all([
+        studioApi.media({ keyword: query.trim(), gallery_id: group === 'all' ? '' : group, page, page_size: 60, sort }),
+        studioApi.mediaGroups(),
+      ]);
+      setAssets(media.data || []);
+      setMeta(media.meta || { page, totalPages: 0, total: 0 });
+      setGalleries(groups.data || []);
+      setSelected(new Set());
+    } catch (reason) {
+      setError(reason.message || '附件库加载失败。');
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    const timer = window.setTimeout(load, 220);
+    return () => window.clearTimeout(timer);
+  }, [query, group, sort, page]);
+  const resetPage = (action) => {
+    setPage(1);
+    action();
+  };
+  const toggle = (id) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const selectAll = () => setSelected(selected.size === assets.length ? new Set() : new Set(assets.map((asset) => asset.id)));
+  const uploadFiles = async (files) => {
+    if (!files?.length) return;
+    setUploading(true);
+    setError('');
+    try {
+      const uploaded = [];
+      for (const file of Array.from(files)) {
+        const result = await studioApi.uploadMedia(file);
+        uploaded.push(result.data);
+      }
+      setAssets((current) => [...uploaded, ...current]);
+      setSelected((current) => new Set([...current, ...uploaded.map((asset) => asset.id)]));
+    } catch (reason) {
+      setError(reason.message || '附件上传失败。');
+    } finally {
+      setUploading(false);
+    }
+  };
+  const confirm = () => {
+    assets.filter((asset) => selected.has(asset.id)).forEach(onInsert);
+    onClose();
+  };
+  const totalPages = meta.totalPages || 0;
+  const pageNumbers = pageWindow(page, totalPages);
+  return (
+    <Modal
+      title="选择附件"
+      onClose={onClose}
+      actions={
+        <>
+          <button className="primaryButton" disabled={!selected.size} onClick={confirm}>
+            确认插入{selected.size ? `（${selected.size}）` : ''}
+          </button>
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+        </>
+      }
+    >
+      <div className="editorAttachmentPicker">
+        <div className="editorAttachmentTabs">
+          <b>附件库</b>
+        </div>
+        <div className="editorAttachmentToolbar">
+          <div className="postLibrarySearch">
+            <Search size={16} />
+            <input value={query} onChange={(event) => resetPage(() => setQuery(event.target.value))} placeholder="搜索附件名称或地址" />
+          </div>
+          <label>
+            排序
+            <select value={sort} onChange={(event) => resetPage(() => setSort(event.target.value))}>
+              <option value="newest">最新上传</option>
+              <option value="oldest">最早上传</option>
+              <option value="name">文件名称</option>
+            </select>
+          </label>
+          <div className="editorAttachmentView">
+            <button type="button" className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} aria-label="列表视图">
+              <List size={17} />
+            </button>
+            <button type="button" className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')} aria-label="网格视图">
+              <Grid2X2 size={17} />
+            </button>
+            <button type="button" onClick={load} aria-label="刷新附件">
+              <RefreshCw size={17} />
+            </button>
+          </div>
+        </div>
+        <section className="editorAttachmentGroups">
+          <b>分组</b>
+          <div>
+            <button className={group === 'all' ? 'active' : ''} onClick={() => resetPage(() => setGroup('all'))}>
+              全部
+            </button>
+            {galleries.map((item) => (
+              <button className={group === item.id ? 'active' : ''} key={item.id} onClick={() => resetPage(() => setGroup(item.id))}>
+                {item.name}
+              </button>
+            ))}
+          </div>
+        </section>
+        <div className="editorAttachmentSelection">
+          <input type="checkbox" checked={assets.length > 0 && selected.size === assets.length} onChange={selectAll} />{' '}
+          <span>选择当前页</span>
+          <input ref={picker} type="file" multiple hidden onChange={(event) => uploadFiles(event.target.files)} />
+          <button className="secondaryButton" disabled={uploading} onClick={() => picker.current?.click()}>
+            <UploadCloud size={16} />
+            {uploading ? '上传中…' : '上传附件'}
+          </button>
+        </div>
+        <p>图片会插入正文；文档、音频、压缩包等会插入下载链接。</p>
+        {error && <p className="editorAttachmentError">{error}</p>}
+        {loading ? (
+          <Empty>正在读取附件库…</Empty>
+        ) : assets.length ? (
+          <div className={`editorAttachmentGrid ${view === 'list' ? 'isList' : ''}`}>
+            {assets.map((asset) => (
+              <label key={asset.id} className={selected.has(asset.id) ? 'selected' : ''}>
+                <input type="checkbox" checked={selected.has(asset.id)} onChange={() => toggle(asset.id)} />
+                <span>{asset.mimeType?.startsWith('image/') ? <ImageIcon size={20} /> : <File size={20} />}</span>
+                {asset.mimeType?.startsWith('image/') && <img src={asset.sourceUrl} alt="" loading="lazy" />}
+                <b>{asset.originalName || '未命名附件'}</b>
+                <small>{readableBytes(asset.byteSize)}</small>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <Empty>没有匹配的附件。</Empty>
+        )}
+        {totalPages > 1 && (
+          <nav className="editorAttachmentPagination" aria-label="附件分页">
+            <span>
+              第 {page} / {totalPages} 页，共 {meta.total} 项
+            </span>
+            <button disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>
+              上一页
+            </button>
+            {pageNumbers.map((number, index) => (
+              <React.Fragment key={number}>
+                {index > 0 && number - pageNumbers[index - 1] > 1 && <i>…</i>}
+                <button className={number === page ? 'active' : ''} disabled={loading} onClick={() => setPage(number)}>
+                  {number}
+                </button>
+              </React.Fragment>
+            ))}
+            <button disabled={page === totalPages || loading} onClick={() => setPage(page + 1)}>
+              下一页
+            </button>
+          </nav>
+        )}
+      </div>
+    </Modal>
+  );
 }
 function RichTextEditor({ html, onChange }) {
-  const [linkUrl, setLinkUrl] = useState(''); const [imageUrl, setImageUrl] = useState(''); const [attachmentOpen, setAttachmentOpen] = useState(false); const initialContent = useMemo(() => html || '<p></p>', [html]);
-  const editor = useEditor({ extensions: [StarterKit, Link.configure({ openOnClick: false, autolink: true, defaultProtocol: 'https' }), Image.configure({ allowBase64: false }), TableKit.configure({ table: { resizable: true } }), Placeholder.configure({ placeholder: '开始写作…可直接粘贴文本、图片与链接。' })], content: initialContent, editorProps: { attributes: { class: 'tiptapContent', 'aria-label': '文章正文富文本编辑器' } }, onUpdate: ({ editor: current }) => onChange(current.getHTML()) });
-  useEffect(() => { if (editor && editor.getHTML() !== initialContent) editor.commands.setContent(initialContent, { emitUpdate: false }); }, [editor, initialContent]);
-  const applyLink = () => { if (!editor || !linkUrl.trim()) return; editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl.trim() }).run(); setLinkUrl(''); };
-  const insertImage = () => { if (!editor || !imageUrl.trim()) return; editor.chain().focus().setImage({ src: imageUrl.trim() }).run(); setImageUrl(''); };
-  const insertAttachment = asset => { if (!editor || !asset?.sourceUrl) return; const name = (asset.originalName || '附件').replace(/[&<>"']/g, value => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[value])); const url = asset.sourceUrl.replace(/"/g, '&quot;'); if (asset.mimeType?.startsWith('image/')) editor.chain().focus().setImage({ src: asset.sourceUrl, alt: asset.originalName || '' }).run(); else editor.chain().focus().insertContent(`<p><a href="${url}" target="_blank" rel="noopener noreferrer">${name}</a></p>`).run(); };
-  return <div className="richEditor"><div className="richToolbar"><div className="richTools"><ToolbarButton editor={editor} label="正文" active={editor?.isActive('paragraph')} onClick={() => editor?.chain().focus().setParagraph().run()}>正文</ToolbarButton><ToolbarButton editor={editor} label="二级标题" active={editor?.isActive('heading', { level: 2 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</ToolbarButton><ToolbarButton editor={editor} label="三级标题" active={editor?.isActive('heading', { level: 3 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</ToolbarButton><i/><ToolbarButton editor={editor} label="加粗" active={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}><b>B</b></ToolbarButton><ToolbarButton editor={editor} label="斜体" active={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></ToolbarButton><ToolbarButton editor={editor} label="删除线" active={editor?.isActive('strike')} onClick={() => editor?.chain().focus().toggleStrike().run()}><s>S</s></ToolbarButton><i/><ToolbarButton editor={editor} label="无序列表" active={editor?.isActive('bulletList')} onClick={() => editor?.chain().focus().toggleBulletList().run()}>• 列表</ToolbarButton><ToolbarButton editor={editor} label="有序列表" active={editor?.isActive('orderedList')} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>1. 列表</ToolbarButton><ToolbarButton editor={editor} label="引用" active={editor?.isActive('blockquote')} onClick={() => editor?.chain().focus().toggleBlockquote().run()}>引用</ToolbarButton><ToolbarButton editor={editor} label="代码块" active={editor?.isActive('codeBlock')} onClick={() => editor?.chain().focus().toggleCodeBlock().run()}>{'</>'}</ToolbarButton><i/><ToolbarButton editor={editor} label="插入表格" active={editor?.isActive('table')} onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>表格</ToolbarButton>{editor?.isActive('table') && <><ToolbarButton editor={editor} label="在下方新增行" onClick={() => editor.chain().focus().addRowAfter().run()}>+ 行</ToolbarButton><ToolbarButton editor={editor} label="在右侧新增列" onClick={() => editor.chain().focus().addColumnAfter().run()}>+ 列</ToolbarButton><ToolbarButton editor={editor} label="删除表格" onClick={() => editor.chain().focus().deleteTable().run()}>删表</ToolbarButton></>}<i/><ToolbarButton editor={editor} label="撤销" onClick={() => editor?.chain().focus().undo().run()}>↶</ToolbarButton><ToolbarButton editor={editor} label="重做" onClick={() => editor?.chain().focus().redo().run()}>↷</ToolbarButton></div><div className="richInsert"><button type="button" onClick={() => setAttachmentOpen(true)}><FolderTree size={15}/>附件库 / 上传</button><input value={linkUrl} onChange={event => setLinkUrl(event.target.value)} placeholder="链接 URL" onKeyDown={event => event.key === 'Enter' && applyLink()}/><button type="button" onClick={applyLink}>插入链接</button><input value={imageUrl} onChange={event => setImageUrl(event.target.value)} placeholder="图片 URL" onKeyDown={event => event.key === 'Enter' && insertImage()}/><button type="button" onClick={insertImage}>插入图片</button>{editor?.isActive('link') && <button type="button" onClick={() => editor.chain().focus().unsetLink().run()}>移除链接</button>}</div></div><EditorContent editor={editor}/>{attachmentOpen && <EditorAttachmentDialog onClose={() => setAttachmentOpen(false)} onInsert={insertAttachment}/>}</div>;
+  const [linkUrl, setLinkUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [attachmentOpen, setAttachmentOpen] = useState(false);
+  const initialContent = useMemo(() => html || '<p></p>', [html]);
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Link.configure({ openOnClick: false, autolink: true, defaultProtocol: 'https' }),
+      Image.configure({ allowBase64: false }),
+      TableKit.configure({ table: { resizable: true } }),
+      Placeholder.configure({ placeholder: '开始写作…可直接粘贴文本、图片与链接。' }),
+    ],
+    content: initialContent,
+    editorProps: { attributes: { class: 'tiptapContent', 'aria-label': '文章正文富文本编辑器' } },
+    onUpdate: ({ editor: current }) => onChange(current.getHTML()),
+  });
+  useEffect(() => {
+    if (editor && editor.getHTML() !== initialContent) editor.commands.setContent(initialContent, { emitUpdate: false });
+  }, [editor, initialContent]);
+  const applyLink = () => {
+    if (!editor || !linkUrl.trim()) return;
+    editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl.trim() }).run();
+    setLinkUrl('');
+  };
+  const insertImage = () => {
+    if (!editor || !imageUrl.trim()) return;
+    editor.chain().focus().setImage({ src: imageUrl.trim() }).run();
+    setImageUrl('');
+  };
+  const insertAttachment = (asset) => {
+    if (!editor || !asset?.sourceUrl) return;
+    const name = (asset.originalName || '附件').replace(
+      /[&<>"']/g,
+      (value) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[value],
+    );
+    const url = asset.sourceUrl.replace(/"/g, '&quot;');
+    if (asset.mimeType?.startsWith('image/'))
+      editor
+        .chain()
+        .focus()
+        .setImage({ src: asset.sourceUrl, alt: asset.originalName || '' })
+        .run();
+    else editor.chain().focus().insertContent(`<p><a href="${url}" target="_blank" rel="noopener noreferrer">${name}</a></p>`).run();
+  };
+  return (
+    <div className="richEditor">
+      <div className="richToolbar">
+        <div className="richTools">
+          <ToolbarButton
+            editor={editor}
+            label="正文"
+            active={editor?.isActive('paragraph')}
+            onClick={() => editor?.chain().focus().setParagraph().run()}
+          >
+            正文
+          </ToolbarButton>
+          <ToolbarButton
+            editor={editor}
+            label="二级标题"
+            active={editor?.isActive('heading', { level: 2 })}
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+          >
+            H2
+          </ToolbarButton>
+          <ToolbarButton
+            editor={editor}
+            label="三级标题"
+            active={editor?.isActive('heading', { level: 3 })}
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+          >
+            H3
+          </ToolbarButton>
+          <i />
+          <ToolbarButton
+            editor={editor}
+            label="加粗"
+            active={editor?.isActive('bold')}
+            onClick={() => editor?.chain().focus().toggleBold().run()}
+          >
+            <b>B</b>
+          </ToolbarButton>
+          <ToolbarButton
+            editor={editor}
+            label="斜体"
+            active={editor?.isActive('italic')}
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
+          >
+            <em>I</em>
+          </ToolbarButton>
+          <ToolbarButton
+            editor={editor}
+            label="删除线"
+            active={editor?.isActive('strike')}
+            onClick={() => editor?.chain().focus().toggleStrike().run()}
+          >
+            <s>S</s>
+          </ToolbarButton>
+          <i />
+          <ToolbarButton
+            editor={editor}
+            label="无序列表"
+            active={editor?.isActive('bulletList')}
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+          >
+            • 列表
+          </ToolbarButton>
+          <ToolbarButton
+            editor={editor}
+            label="有序列表"
+            active={editor?.isActive('orderedList')}
+            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+          >
+            1. 列表
+          </ToolbarButton>
+          <ToolbarButton
+            editor={editor}
+            label="引用"
+            active={editor?.isActive('blockquote')}
+            onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+          >
+            引用
+          </ToolbarButton>
+          <ToolbarButton
+            editor={editor}
+            label="代码块"
+            active={editor?.isActive('codeBlock')}
+            onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
+          >
+            {'</>'}
+          </ToolbarButton>
+          <i />
+          <ToolbarButton
+            editor={editor}
+            label="插入表格"
+            active={editor?.isActive('table')}
+            onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+          >
+            表格
+          </ToolbarButton>
+          {editor?.isActive('table') && (
+            <>
+              <ToolbarButton editor={editor} label="在下方新增行" onClick={() => editor.chain().focus().addRowAfter().run()}>
+                + 行
+              </ToolbarButton>
+              <ToolbarButton editor={editor} label="在右侧新增列" onClick={() => editor.chain().focus().addColumnAfter().run()}>
+                + 列
+              </ToolbarButton>
+              <ToolbarButton editor={editor} label="删除表格" onClick={() => editor.chain().focus().deleteTable().run()}>
+                删表
+              </ToolbarButton>
+            </>
+          )}
+          <i />
+          <ToolbarButton editor={editor} label="撤销" onClick={() => editor?.chain().focus().undo().run()}>
+            ↶
+          </ToolbarButton>
+          <ToolbarButton editor={editor} label="重做" onClick={() => editor?.chain().focus().redo().run()}>
+            ↷
+          </ToolbarButton>
+        </div>
+        <div className="richInsert">
+          <button type="button" onClick={() => setAttachmentOpen(true)}>
+            <FolderTree size={15} />
+            附件库 / 上传
+          </button>
+          <input
+            value={linkUrl}
+            onChange={(event) => setLinkUrl(event.target.value)}
+            placeholder="链接 URL"
+            onKeyDown={(event) => event.key === 'Enter' && applyLink()}
+          />
+          <button type="button" onClick={applyLink}>
+            插入链接
+          </button>
+          <input
+            value={imageUrl}
+            onChange={(event) => setImageUrl(event.target.value)}
+            placeholder="图片 URL"
+            onKeyDown={(event) => event.key === 'Enter' && insertImage()}
+          />
+          <button type="button" onClick={insertImage}>
+            插入图片
+          </button>
+          {editor?.isActive('link') && (
+            <button type="button" onClick={() => editor.chain().focus().unsetLink().run()}>
+              移除链接
+            </button>
+          )}
+        </div>
+      </div>
+      <EditorContent editor={editor} />
+      {attachmentOpen && <EditorAttachmentDialog onClose={() => setAttachmentOpen(false)} onInsert={insertAttachment} />}
+    </div>
+  );
 }
 function TaxonomyPicker({ label, items, selectedIds, onChange, emptyLabel }) {
   const selected = new Set(selectedIds || []);
-  const toggle = id => onChange(selected.has(id) ? [...selected].filter(item => item !== id) : [...selected, id]);
-  return <fieldset className="taxonomyPicker"><legend>{label}</legend>{items.length ? <div>{items.map(item => <label key={item.id}><input type="checkbox" checked={selected.has(item.id)} onChange={() => toggle(item.id)}/><span>{item.name}</span></label>)}</div> : <small>{emptyLabel}</small>}</fieldset>;
+  const toggle = (id) => onChange(selected.has(id) ? [...selected].filter((item) => item !== id) : [...selected, id]);
+  return (
+    <fieldset className="taxonomyPicker">
+      <legend>{label}</legend>
+      {items.length ? (
+        <div>
+          {items.map((item) => (
+            <label key={item.id}>
+              <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggle(item.id)} />
+              <span>{item.name}</span>
+            </label>
+          ))}
+        </div>
+      ) : (
+        <small>{emptyLabel}</small>
+      )}
+    </fieldset>
+  );
 }
 function PostEditorView({ post, categories, tags, saving, onClose, onSave }) {
-  const normalizedPost = value => value ? { ...blankPost, ...value, categoryIds: value.categoryIds || [], tagIds: value.tagIds || [] } : blankPost;
-  const [form, setForm] = useState(normalizedPost(post)); const [mode, setMode] = useState(post?.contentFormat === 'markdown' ? 'markdown' : 'rich'); useEffect(() => { setForm(normalizedPost(post)); setMode(post?.contentFormat === 'markdown' ? 'markdown' : 'rich'); }, [post]); const set = (key, value) => setForm(current => ({ ...current, [key]: value }));
-  const switchMode = nextMode => { if (nextMode === mode) return; setForm(current => nextMode === 'markdown' ? { ...current, content: current.contentFormat === 'markdown' ? current.content : turndown.turndown(current.content || '<p></p>'), contentFormat: 'markdown' } : { ...current, content: editorHtml(current.content, current.contentFormat), contentFormat: 'html' }); setMode(nextMode); };
-  return <section className="postWorkspace"><header className="postWorkspaceTop"><div><button className="backToPosts" onClick={onClose}>← 返回文章列表</button><p>{mode === 'markdown' ? 'Markdown 源码编辑器' : '富文本编辑器'}</p><h1>{post?.id ? '编辑文章' : '新建文章'}</h1></div><div className="postEditorActions"><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !form.title.trim() || !form.slug || !form.content.trim()} onClick={() => onSave(form)}>{saving ? '保存中…' : '保存文章'}</button></div></header><div className="postEditorLayout"><main className="writingCanvas"><input className="editorTitleInput" autoFocus value={form.title} onChange={event => set('title', event.target.value)} placeholder="输入一个清晰的文章标题"/><div className="editorModeSwitch" role="tablist" aria-label="正文编辑格式"><button className={mode === 'rich' ? 'active' : ''} onClick={() => switchMode('rich')} role="tab" aria-selected={mode === 'rich'}>富文本</button><button className={mode === 'markdown' ? 'active' : ''} onClick={() => switchMode('markdown')} role="tab" aria-selected={mode === 'markdown'}>Markdown</button><small>{mode === 'markdown' ? '保存为原始 Markdown，不会转换为 HTML。' : '保存为 HTML；可一键切换回 Markdown。'}</small></div>{mode === 'markdown' ? <CodeMirror value={form.content} height="580px" extensions={[markdown()]} theme="dark" className="markdownCodeEditor" onChange={value => set('content', value)}/> : <RichTextEditor html={editorHtml(form.content, form.contentFormat)} onChange={value => set('content', value)}/>}</main><aside className="postSettingsRail"><Field label="文章地址 slug"><input value={form.slug} onChange={event => set('slug', slugify(event.target.value))} placeholder="example-post"/></Field><Field label="语言"><select value={form.locale} onChange={event => setForm(current => ({ ...current, locale: event.target.value, categoryIds: [], tagIds: [] }))}><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></Field><TaxonomyPicker label="分类" items={categories.filter(item => item.locale === form.locale)} selectedIds={form.categoryIds} onChange={value => set('categoryIds', value)} emptyLabel="该语言暂无可选分类。"/><TaxonomyPicker label="标签" items={tags.filter(item => item.locale === form.locale)} selectedIds={form.tagIds} onChange={value => set('tagIds', value)} emptyLabel="该语言暂无可选标签。"/><Field label="摘要"><textarea rows="5" value={form.summary || ''} onChange={event => set('summary', event.target.value)} placeholder="列表与搜索结果使用的摘要"/></Field><Field label="封面完整 URL"><input value={form.coverUrl || ''} onChange={event => set('coverUrl', event.target.value)} placeholder="https://…"/></Field><p className="editorHint">富文本使用 Tiptap；Markdown 源码使用 CodeMirror。分类与标签会以逻辑关联方式保存。</p></aside></div></section>;
+  const normalizedPost = (value) =>
+    value ? { ...blankPost, ...value, categoryIds: value.categoryIds || [], tagIds: value.tagIds || [] } : blankPost;
+  const [form, setForm] = useState(normalizedPost(post));
+  const [mode, setMode] = useState(post?.contentFormat === 'markdown' ? 'markdown' : 'rich');
+  useEffect(() => {
+    setForm(normalizedPost(post));
+    setMode(post?.contentFormat === 'markdown' ? 'markdown' : 'rich');
+  }, [post]);
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const switchMode = (nextMode) => {
+    if (nextMode === mode) return;
+    setForm((current) =>
+      nextMode === 'markdown'
+        ? {
+            ...current,
+            content: current.contentFormat === 'markdown' ? current.content : turndown.turndown(current.content || '<p></p>'),
+            contentFormat: 'markdown',
+          }
+        : { ...current, content: editorHtml(current.content, current.contentFormat), contentFormat: 'html' },
+    );
+    setMode(nextMode);
+  };
+  return (
+    <section className="postWorkspace">
+      <header className="postWorkspaceTop">
+        <div>
+          <button className="backToPosts" onClick={onClose}>
+            ← 返回文章列表
+          </button>
+          <p>{mode === 'markdown' ? 'Markdown 源码编辑器' : '富文本编辑器'}</p>
+          <h1>{post?.id ? '编辑文章' : '新建文章'}</h1>
+        </div>
+        <div className="postEditorActions">
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button
+            className="primaryButton"
+            disabled={saving || !form.title.trim() || !form.slug || !form.content.trim()}
+            onClick={() => onSave(form)}
+          >
+            {saving ? '保存中…' : '保存文章'}
+          </button>
+        </div>
+      </header>
+      <div className="postEditorLayout">
+        <main className="writingCanvas">
+          <input
+            className="editorTitleInput"
+            autoFocus
+            value={form.title}
+            onChange={(event) => set('title', event.target.value)}
+            placeholder="输入一个清晰的文章标题"
+          />
+          <div className="editorModeSwitch" role="tablist" aria-label="正文编辑格式">
+            <button
+              className={mode === 'rich' ? 'active' : ''}
+              onClick={() => switchMode('rich')}
+              role="tab"
+              aria-selected={mode === 'rich'}
+            >
+              富文本
+            </button>
+            <button
+              className={mode === 'markdown' ? 'active' : ''}
+              onClick={() => switchMode('markdown')}
+              role="tab"
+              aria-selected={mode === 'markdown'}
+            >
+              Markdown
+            </button>
+            <small>{mode === 'markdown' ? '保存为原始 Markdown，不会转换为 HTML。' : '保存为 HTML；可一键切换回 Markdown。'}</small>
+          </div>
+          {mode === 'markdown' ? (
+            <CodeMirror
+              value={form.content}
+              height="580px"
+              extensions={[markdown()]}
+              theme="dark"
+              className="markdownCodeEditor"
+              onChange={(value) => set('content', value)}
+            />
+          ) : (
+            <RichTextEditor html={editorHtml(form.content, form.contentFormat)} onChange={(value) => set('content', value)} />
+          )}
+        </main>
+        <aside className="postSettingsRail">
+          <Field label="文章地址 slug">
+            <input value={form.slug} onChange={(event) => set('slug', slugify(event.target.value))} placeholder="example-post" />
+          </Field>
+          <Field label="语言">
+            <select
+              value={form.locale}
+              onChange={(event) => setForm((current) => ({ ...current, locale: event.target.value, categoryIds: [], tagIds: [] }))}
+            >
+              <option value="zh-CN">简体中文</option>
+              <option value="en-US">English</option>
+            </select>
+          </Field>
+          <TaxonomyPicker
+            label="分类"
+            items={categories.filter((item) => item.locale === form.locale)}
+            selectedIds={form.categoryIds}
+            onChange={(value) => set('categoryIds', value)}
+            emptyLabel="该语言暂无可选分类。"
+          />
+          <TaxonomyPicker
+            label="标签"
+            items={tags.filter((item) => item.locale === form.locale)}
+            selectedIds={form.tagIds}
+            onChange={(value) => set('tagIds', value)}
+            emptyLabel="该语言暂无可选标签。"
+          />
+          <Field label="摘要">
+            <textarea
+              rows="5"
+              value={form.summary || ''}
+              onChange={(event) => set('summary', event.target.value)}
+              placeholder="列表与搜索结果使用的摘要"
+            />
+          </Field>
+          <Field label="封面完整 URL">
+            <input value={form.coverUrl || ''} onChange={(event) => set('coverUrl', event.target.value)} placeholder="https://…" />
+          </Field>
+          <p className="editorHint">富文本使用 Tiptap；Markdown 源码使用 CodeMirror。分类与标签会以逻辑关联方式保存。</p>
+        </aside>
+      </div>
+    </section>
+  );
 }
 
-function PageManager({ pages, loading, inTrash, onNew, onEdit, onDelete, onRestore, onToggleTrash }) { const [query, setQuery] = useState(''); const [status, setStatus] = useState('all'); const visible = pages.filter(item => (status === 'all' || item.status === status) && `${item.title} ${item.slug}`.toLowerCase().includes(query.toLowerCase())); return <><div className="studioHeading adminListHeading"><div><p>内容管理</p><h1>{inTrash ? '独立页回收站' : '独立页'} <small>{visible.length} 项</small></h1></div>{inTrash ? <button className="secondaryButton" onClick={onToggleTrash}>返回独立页</button> : <div><button className="secondaryButton" onClick={onToggleTrash}><Trash2 size={16}/>回收站</button><button className="primaryButton" onClick={onNew}><Plus size={17}/>新建页面</button></div>}</div><section className="adminDirectory">{loading ? <Empty>正在读取页面…</Empty> : <><AdminListToolbar query={query} onQuery={setQuery}>{!inTrash && <><label>状态<select value={status} onChange={event => setStatus(event.target.value)}><option value="all">全部</option><option value="published">已发布</option><option value="draft">草稿</option><option value="archived">已归档</option></select></label><label>可见性<select defaultValue="all"><option value="all">全部</option><option>公开</option><option>私有</option></select></label></>}<label>排序<select defaultValue="default"><option value="default">默认</option></select></label></AdminListToolbar><div className="adminListRows">{visible.map(page => <article key={page.id}><label className="adminListCheck"><input type="checkbox" aria-label={`选择 ${page.title}`}/></label><div className="adminListPrimary"><b>{page.title}</b><span>{inTrash ? `删除于 ${new Date(page.deletedAt || page.updatedAt || page.createdAt).toLocaleString('zh-CN')}` : `/${page.slug} · ${page.locale}`}</span></div><div className="adminListActions">{inTrash ? <button onClick={() => onRestore(page)}><RotateCcw size={16}/>恢复</button> : <><span className={`adminTypePill ${page.status === 'published' ? 'healthy' : ''}`}>{page.status === 'published' ? '已发布' : page.status === 'archived' ? '已归档' : '草稿'}</span><button onClick={() => onEdit(page)}><Pencil size={16}/>编辑</button><button className="dangerIcon" onClick={() => onDelete(page)}><Trash2 size={16}/></button></>}</div></article>)}</div><AdminListFooter total={visible.length}/></>}</section></>; }
+function PageManager({ pages, loading, inTrash, onNew, onEdit, onDelete, onRestore, onToggleTrash }) {
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('all');
+  const visible = pages.filter(
+    (item) => (status === 'all' || item.status === status) && `${item.title} ${item.slug}`.toLowerCase().includes(query.toLowerCase()),
+  );
+  return (
+    <>
+      <div className="studioHeading adminListHeading">
+        <div>
+          <p>内容管理</p>
+          <h1>
+            {inTrash ? '独立页回收站' : '独立页'} <small>{visible.length} 项</small>
+          </h1>
+        </div>
+        {inTrash ? (
+          <button className="secondaryButton" onClick={onToggleTrash}>
+            返回独立页
+          </button>
+        ) : (
+          <div>
+            <button className="secondaryButton" onClick={onToggleTrash}>
+              <Trash2 size={16} />
+              回收站
+            </button>
+            <button className="primaryButton" onClick={onNew}>
+              <Plus size={17} />
+              新建页面
+            </button>
+          </div>
+        )}
+      </div>
+      <section className="adminDirectory">
+        {loading ? (
+          <Empty>正在读取页面…</Empty>
+        ) : (
+          <>
+            <AdminListToolbar query={query} onQuery={setQuery}>
+              {!inTrash && (
+                <>
+                  <label>
+                    状态
+                    <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                      <option value="all">全部</option>
+                      <option value="published">已发布</option>
+                      <option value="draft">草稿</option>
+                      <option value="archived">已归档</option>
+                    </select>
+                  </label>
+                  <label>
+                    可见性
+                    <select defaultValue="all">
+                      <option value="all">全部</option>
+                      <option>公开</option>
+                      <option>私有</option>
+                    </select>
+                  </label>
+                </>
+              )}
+              <label>
+                排序
+                <select defaultValue="default">
+                  <option value="default">默认</option>
+                </select>
+              </label>
+            </AdminListToolbar>
+            <div className="adminListRows">
+              {visible.map((page) => (
+                <article key={page.id}>
+                  <label className="adminListCheck">
+                    <input type="checkbox" aria-label={`选择 ${page.title}`} />
+                  </label>
+                  <div className="adminListPrimary">
+                    <b>{page.title}</b>
+                    <span>
+                      {inTrash
+                        ? `删除于 ${new Date(page.deletedAt || page.updatedAt || page.createdAt).toLocaleString('zh-CN')}`
+                        : `/${page.slug} · ${page.locale}`}
+                    </span>
+                  </div>
+                  <div className="adminListActions">
+                    {inTrash ? (
+                      <button onClick={() => onRestore(page)}>
+                        <RotateCcw size={16} />
+                        恢复
+                      </button>
+                    ) : (
+                      <>
+                        <span className={`adminTypePill ${page.status === 'published' ? 'healthy' : ''}`}>
+                          {page.status === 'published' ? '已发布' : page.status === 'archived' ? '已归档' : '草稿'}
+                        </span>
+                        <button onClick={() => onEdit(page)}>
+                          <Pencil size={16} />
+                          编辑
+                        </button>
+                        <button className="dangerIcon" onClick={() => onDelete(page)}>
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+            <AdminListFooter total={visible.length} />
+          </>
+        )}
+      </section>
+    </>
+  );
+}
 function PageEditor({ page, saving, onClose, onSave }) {
-  const [form, setForm] = useState(page || blankPage); const [mode, setMode] = useState(page?.contentFormat === 'html' ? 'rich' : 'markdown');
-  useEffect(() => { setForm(page || blankPage); setMode(page?.contentFormat === 'html' ? 'rich' : 'markdown'); }, [page]);
-  const set = (key, value) => setForm(current => ({ ...current, [key]: value }));
-  const switchMode = nextMode => { if (nextMode === mode) return; setForm(current => nextMode === 'markdown' ? { ...current, content: current.contentFormat === 'markdown' ? current.content : turndown.turndown(current.content || '<p></p>'), contentFormat: 'markdown' } : { ...current, content: editorHtml(current.content, current.contentFormat), contentFormat: 'html' }); setMode(nextMode); };
-  return <section className="postWorkspace pageWorkspace"><header className="postWorkspaceTop"><div><button className="backToPosts" onClick={onClose}>← 返回独立页列表</button><p>{mode === 'markdown' ? 'Markdown 源码编辑器' : '富文本编辑器'}</p><h1>{page?.id ? '编辑独立页' : '新建独立页'}</h1></div><div className="postEditorActions"><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !form.title.trim() || !form.slug || !form.content.trim()} onClick={() => onSave(form)}>{saving ? '保存中…' : '保存页面'}</button></div></header><div className="postEditorLayout"><main className="writingCanvas"><input className="editorTitleInput" autoFocus value={form.title} onChange={event => set('title', event.target.value)} placeholder="输入页面标题"/><div className="editorModeSwitch" role="tablist" aria-label="页面正文编辑格式"><button className={mode === 'rich' ? 'active' : ''} onClick={() => switchMode('rich')} role="tab" aria-selected={mode === 'rich'}>富文本</button><button className={mode === 'markdown' ? 'active' : ''} onClick={() => switchMode('markdown')} role="tab" aria-selected={mode === 'markdown'}>Markdown</button><small>{mode === 'markdown' ? '保存为原始 Markdown，不会转换为 HTML。' : '保存为 HTML；可一键切换回 Markdown。'}</small></div>{mode === 'markdown' ? <CodeMirror value={form.content} height="580px" extensions={[markdown()]} theme="dark" className="markdownCodeEditor" onChange={value => set('content', value)}/> : <RichTextEditor html={editorHtml(form.content, form.contentFormat)} onChange={value => set('content', value)}/>}</main><aside className="postSettingsRail"><Field label="页面地址 slug"><input value={form.slug} onChange={event => set('slug', slugify(event.target.value))} placeholder="about"/></Field><Field label="语言"><select value={form.locale} onChange={event => set('locale', event.target.value)}><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></Field><Field label="发布状态"><select value={form.status} onChange={event => set('status', event.target.value)}><option value="draft">草稿</option><option value="published">已发布</option><option value="archived">归档</option></select></Field><Field label="可见性"><select value={form.visibility} onChange={event => set('visibility', event.target.value)}><option value="private">私有</option><option value="public">公开</option><option value="unlisted">不收录</option></select></Field><Field label="摘要"><textarea rows="4" value={form.summary || ''} onChange={event => set('summary', event.target.value)} placeholder="页面列表与摘要使用"/></Field><Field label="SEO 标题"><input value={form.seoTitle || ''} onChange={event => set('seoTitle', event.target.value)}/></Field><Field label="SEO 描述"><textarea rows="3" value={form.seoDescription || ''} onChange={event => set('seoDescription', event.target.value)}/></Field><p className="editorHint">独立页和文章一样支持富文本与 Markdown，并在保存时保留原始格式。</p></aside></div></section>;
+  const [form, setForm] = useState(page || blankPage);
+  const [mode, setMode] = useState(page?.contentFormat === 'html' ? 'rich' : 'markdown');
+  useEffect(() => {
+    setForm(page || blankPage);
+    setMode(page?.contentFormat === 'html' ? 'rich' : 'markdown');
+  }, [page]);
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const switchMode = (nextMode) => {
+    if (nextMode === mode) return;
+    setForm((current) =>
+      nextMode === 'markdown'
+        ? {
+            ...current,
+            content: current.contentFormat === 'markdown' ? current.content : turndown.turndown(current.content || '<p></p>'),
+            contentFormat: 'markdown',
+          }
+        : { ...current, content: editorHtml(current.content, current.contentFormat), contentFormat: 'html' },
+    );
+    setMode(nextMode);
+  };
+  return (
+    <section className="postWorkspace pageWorkspace">
+      <header className="postWorkspaceTop">
+        <div>
+          <button className="backToPosts" onClick={onClose}>
+            ← 返回独立页列表
+          </button>
+          <p>{mode === 'markdown' ? 'Markdown 源码编辑器' : '富文本编辑器'}</p>
+          <h1>{page?.id ? '编辑独立页' : '新建独立页'}</h1>
+        </div>
+        <div className="postEditorActions">
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button
+            className="primaryButton"
+            disabled={saving || !form.title.trim() || !form.slug || !form.content.trim()}
+            onClick={() => onSave(form)}
+          >
+            {saving ? '保存中…' : '保存页面'}
+          </button>
+        </div>
+      </header>
+      <div className="postEditorLayout">
+        <main className="writingCanvas">
+          <input
+            className="editorTitleInput"
+            autoFocus
+            value={form.title}
+            onChange={(event) => set('title', event.target.value)}
+            placeholder="输入页面标题"
+          />
+          <div className="editorModeSwitch" role="tablist" aria-label="页面正文编辑格式">
+            <button
+              className={mode === 'rich' ? 'active' : ''}
+              onClick={() => switchMode('rich')}
+              role="tab"
+              aria-selected={mode === 'rich'}
+            >
+              富文本
+            </button>
+            <button
+              className={mode === 'markdown' ? 'active' : ''}
+              onClick={() => switchMode('markdown')}
+              role="tab"
+              aria-selected={mode === 'markdown'}
+            >
+              Markdown
+            </button>
+            <small>{mode === 'markdown' ? '保存为原始 Markdown，不会转换为 HTML。' : '保存为 HTML；可一键切换回 Markdown。'}</small>
+          </div>
+          {mode === 'markdown' ? (
+            <CodeMirror
+              value={form.content}
+              height="580px"
+              extensions={[markdown()]}
+              theme="dark"
+              className="markdownCodeEditor"
+              onChange={(value) => set('content', value)}
+            />
+          ) : (
+            <RichTextEditor html={editorHtml(form.content, form.contentFormat)} onChange={(value) => set('content', value)} />
+          )}
+        </main>
+        <aside className="postSettingsRail">
+          <Field label="页面地址 slug">
+            <input value={form.slug} onChange={(event) => set('slug', slugify(event.target.value))} placeholder="about" />
+          </Field>
+          <Field label="语言">
+            <select value={form.locale} onChange={(event) => set('locale', event.target.value)}>
+              <option value="zh-CN">简体中文</option>
+              <option value="en-US">English</option>
+            </select>
+          </Field>
+          <Field label="发布状态">
+            <select value={form.status} onChange={(event) => set('status', event.target.value)}>
+              <option value="draft">草稿</option>
+              <option value="published">已发布</option>
+              <option value="archived">归档</option>
+            </select>
+          </Field>
+          <Field label="可见性">
+            <select value={form.visibility} onChange={(event) => set('visibility', event.target.value)}>
+              <option value="private">私有</option>
+              <option value="public">公开</option>
+              <option value="unlisted">不收录</option>
+            </select>
+          </Field>
+          <Field label="摘要">
+            <textarea
+              rows="4"
+              value={form.summary || ''}
+              onChange={(event) => set('summary', event.target.value)}
+              placeholder="页面列表与摘要使用"
+            />
+          </Field>
+          <Field label="SEO 标题">
+            <input value={form.seoTitle || ''} onChange={(event) => set('seoTitle', event.target.value)} />
+          </Field>
+          <Field label="SEO 描述">
+            <textarea rows="3" value={form.seoDescription || ''} onChange={(event) => set('seoDescription', event.target.value)} />
+          </Field>
+          <p className="editorHint">独立页和文章一样支持富文本与 Markdown，并在保存时保留原始格式。</p>
+        </aside>
+      </div>
+    </section>
+  );
 }
 
-function EntityList({ title, description, items, loading, onCreate, onEdit }) { return <section className="studioPanel"><header><div><h2>{title}</h2><p>{description}</p></div><button className="secondaryButton" onClick={onCreate}><Plus size={15}/>新增</button></header>{loading ? <Empty>正在读取…</Empty> : items.length ? <div className="studioPosts compactRows">{items.map(item => <article key={item.id}><div><b>{item.name}</b><span>/{item.slug} · {item.locale}</span></div><button className="iconButton" onClick={() => onEdit(item)}><Pencil size={16}/></button></article>)}</div> : <Empty>暂时没有{title}。</Empty>}</section>; }
-function TaxonomyManager({ categories, tags, loading, onEdit }) { const [query, setQuery] = useState(''); const [type, setType] = useState('all'); const items = [...categories.map(item => ({ ...item, kind: 'category' })), ...tags.map(item => ({ ...item, kind: 'tag' }))].filter(item => (type === 'all' || item.kind === type) && `${item.name} ${item.slug}`.toLowerCase().includes(query.toLowerCase())); return <><div className="studioHeading adminListHeading"><div><p>内容组织</p><h1>分类与标签 <small>{items.length} 项</small></h1></div><div><button className="secondaryButton" onClick={() => onEdit('category')}><Plus size={16}/>新建分类</button><button className="primaryButton" onClick={() => onEdit('tag')}><Plus size={16}/>新建标签</button></div></div><section className="adminDirectory">{loading ? <Empty>正在读取分类与标签…</Empty> : <><AdminListToolbar query={query} onQuery={setQuery}><label>类型<select value={type} onChange={event => setType(event.target.value)}><option value="all">全部</option><option value="category">分类</option><option value="tag">标签</option></select></label><label>排序<select defaultValue="default"><option value="default">默认</option></select></label></AdminListToolbar><div className="adminListRows">{items.map(item => <article key={`${item.kind}-${item.id}`}><label className="adminListCheck"><input type="checkbox" aria-label={`选择 ${item.name}`}/></label><div className="adminListPrimary"><b>{item.name}</b><span>/{item.slug} · {item.locale} · {item.kind === 'category' ? (item.isHomeVisible ? '首页展示' : '首页隐藏') : '标签'}</span></div><div className="adminListActions"><span className={`adminTypePill ${item.kind}`}>{item.kind === 'category' ? '分类' : '标签'}</span><button onClick={() => onEdit(item.kind, item)}><Pencil size={16}/>编辑</button></div></article>)}</div><AdminListFooter total={items.length}/></>}</section></>; }
-function TaxonomyEditor({ type, item, saving, onClose, onSave, onDelete }) { const [form, setForm] = useState(item ? { ...blankTaxonomy, ...item } : blankTaxonomy); const set = (key, value) => setForm(current => ({ ...current, [key]: value })); const title = type === 'category' ? '分类' : '标签'; return <Modal title={`${item?.id ? '编辑' : '新建'}${title}`} onClose={onClose} actions={<>{item?.id && <button className="dangerButton minorDanger" onClick={() => onDelete(item)}>删除</button>}<button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !form.name || !form.slug} onClick={() => onSave(form)}>{saving ? '保存中…' : '保存'}</button></>}><div className="editorGrid"><Field label="名称"><input autoFocus value={form.name} onChange={event => set('name', event.target.value)}/></Field><Field label="地址 slug"><input value={form.slug} onChange={event => set('slug', slugify(event.target.value))}/></Field></div><div className="editorGrid"><Field label="语言"><select value={form.locale} onChange={event => set('locale', event.target.value)}><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></Field>{type === 'category' && <Field label="排序"><input type="number" min="0" value={form.sortOrder || 0} onChange={event => set('sortOrder', Number(event.target.value))}/></Field>}</div>{type === 'category' && <label className="checkField"><input type="checkbox" checked={Boolean(form.isHomeVisible)} onChange={event => set('isHomeVisible', event.target.checked)}/>在前台首页展示</label>}<Field label="描述"><textarea rows="4" value={form.description || ''} onChange={event => set('description', event.target.value)}/></Field></Modal>; }
+function TaxonomyManager({ type, items, loading, onEdit }) {
+  const [query, setQuery] = useState('');
+  const title = type === 'category' ? '分类' : '标签';
+  const visible = items.filter((item) => `${item.name} ${item.slug}`.toLowerCase().includes(query.toLowerCase()));
+  return (
+    <>
+      <div className="studioHeading adminListHeading">
+        <div>
+          <p>内容组织</p>
+          <h1>
+            {title}管理 <small>{items.length} 项</small>
+          </h1>
+        </div>
+        <div>
+          <button className="primaryButton" onClick={() => onEdit(type)}>
+            <Plus size={16} />
+            新建{title}
+          </button>
+        </div>
+      </div>
+      <section className="adminDirectory">
+        {loading ? (
+          <Empty>正在读取{title}…</Empty>
+        ) : (
+          <>
+            <AdminListToolbar query={query} onQuery={setQuery}>
+              <label>
+                排序
+                <select defaultValue="default">
+                  <option value="default">默认</option>
+                </select>
+              </label>
+            </AdminListToolbar>
+            <div className="adminListRows">
+              {visible.map((item) => (
+                <article key={item.id}>
+                  <label className="adminListCheck">
+                    <input type="checkbox" aria-label={`选择 ${item.name}`} />
+                  </label>
+                  <div className="adminListPrimary">
+                    <b>{item.name}</b>
+                    <span>
+                      /{item.slug} · {item.locale}{type === 'category' ? ` · ${item.isHomeVisible ? '首页展示' : '首页隐藏'}` : ''}
+                    </span>
+                  </div>
+                  <div className="adminListActions">
+                    <span className={`adminTypePill ${type}`}>{title}</span>
+                    <button onClick={() => onEdit(type, item)}>
+                      <Pencil size={16} />
+                      编辑
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <AdminListFooter total={visible.length} />
+          </>
+        )}
+      </section>
+    </>
+  );
+}
+function TaxonomyEditor({ type, item, saving, onClose, onSave, onDelete }) {
+  const [form, setForm] = useState(item ? { ...blankTaxonomy, ...item } : blankTaxonomy);
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const title = type === 'category' ? '分类' : '标签';
+  return (
+    <Modal
+      title={`${item?.id ? '编辑' : '新建'}${title}`}
+      onClose={onClose}
+      actions={
+        <>
+          {item?.id && (
+            <button className="dangerButton minorDanger" onClick={() => onDelete(item)}>
+              删除
+            </button>
+          )}
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button className="primaryButton" disabled={saving || !form.name || !form.slug} onClick={() => onSave(form)}>
+            {saving ? '保存中…' : '保存'}
+          </button>
+        </>
+      }
+    >
+      <div className="editorGrid">
+        <Field label="名称">
+          <input autoFocus value={form.name} onChange={(event) => set('name', event.target.value)} />
+        </Field>
+        <Field label="地址 slug">
+          <input value={form.slug} onChange={(event) => set('slug', slugify(event.target.value))} />
+        </Field>
+      </div>
+      <div className="editorGrid">
+        <Field label="语言">
+          <select value={form.locale} onChange={(event) => set('locale', event.target.value)}>
+            <option value="zh-CN">简体中文</option>
+            <option value="en-US">English</option>
+          </select>
+        </Field>
+        {type === 'category' && (
+          <Field label="排序">
+            <input type="number" min="0" value={form.sortOrder || 0} onChange={(event) => set('sortOrder', Number(event.target.value))} />
+          </Field>
+        )}
+      </div>
+      {type === 'category' && (
+        <label className="checkField">
+          <input type="checkbox" checked={Boolean(form.isHomeVisible)} onChange={(event) => set('isHomeVisible', event.target.checked)} />
+          在前台首页展示
+        </label>
+      )}
+      <Field label="描述">
+        <textarea rows="4" value={form.description || ''} onChange={(event) => set('description', event.target.value)} />
+      </Field>
+    </Modal>
+  );
+}
 
-function ToolManager({ tools, loading, onEdit }) { const [query, setQuery] = useState(''); const items = tools.filter(item => `${item.name} ${item.provider || ''} ${item.url}`.toLowerCase().includes(query.toLowerCase())); return <><div className="studioHeading adminListHeading"><div><p>首页模块</p><h1>AI 工具 <small>{items.length} 项</small></h1></div><button className="primaryButton" onClick={() => onEdit()}><Plus size={17}/>新增工具</button></div><section className="adminDirectory">{loading ? <Empty>正在读取工具…</Empty> : <><AdminListToolbar query={query} onQuery={setQuery}><label>展示<select defaultValue="all"><option value="all">全部</option><option>首页展示</option></select></label><label>排序<select defaultValue="default"><option value="default">默认</option></select></label></AdminListToolbar><div className="adminListRows">{items.map(tool => <article key={tool.id}><label className="adminListCheck"><input type="checkbox" aria-label={`选择 ${tool.name}`}/></label><div className="adminListPrimary"><b>{tool.name}</b><span>{tool.provider || '未设置提供方'} · {tool.url}</span></div><div className="adminListActions"><span className="adminTypePill">{tool.isFeatured ? '首页展示' : '仅保存'}</span><button onClick={() => onEdit(tool)}><Pencil size={16}/>编辑</button></div></article>)}</div><AdminListFooter total={items.length}/></>}</section></>; }
-function ToolEditor({ tool, saving, onClose, onSave, onDelete }) { const [form, setForm] = useState(tool || blankTool); const set = (key, value) => setForm(current => ({ ...current, [key]: value })); return <Modal title={tool?.id ? '编辑 AI 工具' : '新增 AI 工具'} onClose={onClose} actions={<>{tool?.id && <button className="dangerButton minorDanger" onClick={() => onDelete(tool)}>删除</button>}<button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !form.name || !form.slug || !form.url} onClick={() => onSave(form)}>{saving ? '保存中…' : '保存工具'}</button></>}><div className="editorGrid toolIdentityGrid"><Field label="工具名称"><input autoFocus value={form.name} onChange={event => { set('name', event.target.value); if (!tool?.id && (!form.slug || form.slug === slugify(form.name))) set('slug', slugify(event.target.value)); }} placeholder="例如 ChatGPT"/></Field><Field label="内部标识" hint="用于后台唯一识别，保存后不会在前台显示。"><input value={form.slug} onChange={event => set('slug', slugify(event.target.value))} placeholder="chatgpt"/></Field></div><Field label="访问地址" hint="访客点击工具卡片后跳转到这里。"><input type="url" value={form.url} onChange={event => set('url', event.target.value)} placeholder="https://chatgpt.com/"/></Field><div className="editorGrid toolMetaGrid"><Field label="所属公司 / 团队" hint="例如 OpenAI、Anthropic；仅用于后台识别。"><input value={form.provider || ''} onChange={event => set('provider', event.target.value)} placeholder="例如 OpenAI"/></Field><Field label="工具用途分类" hint="例如 对话助手、编程、图像生成；便于后台整理。"><input value={form.category || ''} onChange={event => set('category', event.target.value)} placeholder="例如 对话助手"/></Field></div><Field label="工具说明" hint="显示在前台工具卡片中，建议一句话说明用途。"><textarea rows="3" value={form.description || ''} onChange={event => set('description', event.target.value)} placeholder="例如：支持问答、写作和代码协作的对话助手。"/></Field><label className="checkField"><input type="checkbox" checked={Boolean(form.isFeatured)} onChange={event => set('isFeatured', event.target.checked)}/>在首页显示</label></Modal>; }
+function ToolManager({ tools, loading, onEdit }) {
+  const [query, setQuery] = useState('');
+  const items = tools.filter((item) => `${item.name} ${item.provider || ''} ${item.url}`.toLowerCase().includes(query.toLowerCase()));
+  return (
+    <>
+      <div className="studioHeading adminListHeading">
+        <div>
+          <p>首页模块</p>
+          <h1>
+            AI 工具 <small>{items.length} 项</small>
+          </h1>
+        </div>
+        <button className="primaryButton" onClick={() => onEdit()}>
+          <Plus size={17} />
+          新增工具
+        </button>
+      </div>
+      <section className="adminDirectory">
+        {loading ? (
+          <Empty>正在读取工具…</Empty>
+        ) : (
+          <>
+            <AdminListToolbar query={query} onQuery={setQuery}>
+              <label>
+                展示
+                <select defaultValue="all">
+                  <option value="all">全部</option>
+                  <option>首页展示</option>
+                </select>
+              </label>
+              <label>
+                排序
+                <select defaultValue="default">
+                  <option value="default">默认</option>
+                </select>
+              </label>
+            </AdminListToolbar>
+            <div className="adminListRows">
+              {items.map((tool) => (
+                <article key={tool.id}>
+                  <label className="adminListCheck">
+                    <input type="checkbox" aria-label={`选择 ${tool.name}`} />
+                  </label>
+                  <div className="adminListPrimary">
+                    <b>{tool.name}</b>
+                    <span>
+                      {tool.provider || '未设置提供方'} · {tool.url}
+                    </span>
+                  </div>
+                  <div className="adminListActions">
+                    <span className="adminTypePill">{tool.isFeatured ? '首页展示' : '仅保存'}</span>
+                    <button onClick={() => onEdit(tool)}>
+                      <Pencil size={16} />
+                      编辑
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <AdminListFooter total={items.length} />
+          </>
+        )}
+      </section>
+    </>
+  );
+}
+function ToolEditor({ tool, saving, onClose, onSave, onDelete }) {
+  const [form, setForm] = useState(tool || blankTool);
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  return (
+    <Modal
+      title={tool?.id ? '编辑 AI 工具' : '新增 AI 工具'}
+      onClose={onClose}
+      actions={
+        <>
+          {tool?.id && (
+            <button className="dangerButton minorDanger" onClick={() => onDelete(tool)}>
+              删除
+            </button>
+          )}
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button className="primaryButton" disabled={saving || !form.name || !form.slug || !form.url} onClick={() => onSave(form)}>
+            {saving ? '保存中…' : '保存工具'}
+          </button>
+        </>
+      }
+    >
+      <div className="editorGrid toolIdentityGrid">
+        <Field label="工具名称">
+          <input
+            autoFocus
+            value={form.name}
+            onChange={(event) => {
+              set('name', event.target.value);
+              if (!tool?.id && (!form.slug || form.slug === slugify(form.name))) set('slug', slugify(event.target.value));
+            }}
+            placeholder="例如 ChatGPT"
+          />
+        </Field>
+        <Field label="内部标识" hint="用于后台唯一识别，保存后不会在前台显示。">
+          <input value={form.slug} onChange={(event) => set('slug', slugify(event.target.value))} placeholder="chatgpt" />
+        </Field>
+      </div>
+      <Field label="访问地址" hint="访客点击工具卡片后跳转到这里。">
+        <input type="url" value={form.url} onChange={(event) => set('url', event.target.value)} placeholder="https://chatgpt.com/" />
+      </Field>
+      <div className="editorGrid toolMetaGrid">
+        <Field label="所属公司 / 团队" hint="例如 OpenAI、Anthropic；仅用于后台识别。">
+          <input value={form.provider || ''} onChange={(event) => set('provider', event.target.value)} placeholder="例如 OpenAI" />
+        </Field>
+        <Field label="工具用途分类" hint="例如 对话助手、编程、图像生成；便于后台整理。">
+          <input value={form.category || ''} onChange={(event) => set('category', event.target.value)} placeholder="例如 对话助手" />
+        </Field>
+      </div>
+      <Field label="工具说明" hint="显示在前台工具卡片中，建议一句话说明用途。">
+        <textarea
+          rows="3"
+          value={form.description || ''}
+          onChange={(event) => set('description', event.target.value)}
+          placeholder="例如：支持问答、写作和代码协作的对话助手。"
+        />
+      </Field>
+      <label className="checkField">
+        <input type="checkbox" checked={Boolean(form.isFeatured)} onChange={(event) => set('isFeatured', event.target.checked)} />
+        在首页显示
+      </label>
+    </Modal>
+  );
+}
 
 function CommentReplyList({ replies, statusText, canReply, onReply }) {
   if (!replies?.length) return null;
-  return <div className="commentReplies">
-    {replies.map(reply => <article key={reply.id}>
-      <div className={`commentAuthorAvatar ${reply.authorKind}`} aria-hidden="true">{(reply.authorName || '管').slice(0, 1)}</div>
-      <div><header><b>{reply.authorName}</b><span>回复：</span><time>{new Date(reply.ctime).toLocaleString('zh-CN')}</time></header><p>{reply.content}</p><div className="commentReplyActions"><small className={reply.status === 'approved' ? 'publishedPill' : 'draftPill'}>{statusText[reply.status] || reply.status}</small>{canReply && <button onClick={() => onReply(reply)}>回复</button>}</div><CommentReplyList replies={reply.replies} statusText={statusText} canReply={canReply} onReply={onReply}/></div>
-    </article>)}
-  </div>;
+  return (
+    <div className="commentReplies">
+      {replies.map((reply) => (
+        <article key={reply.id}>
+          <div className={`commentAuthorAvatar ${reply.authorKind}`} aria-hidden="true">
+            {(reply.authorName || '管').slice(0, 1)}
+          </div>
+          <div>
+            <header>
+              <b>{reply.authorName}</b>
+              <span>回复：</span>
+              <time>{new Date(reply.ctime).toLocaleString('zh-CN')}</time>
+            </header>
+            <p>{reply.content}</p>
+            <div className="commentReplyActions">
+              <small className={reply.status === 'approved' ? 'publishedPill' : 'draftPill'}>
+                {statusText[reply.status] || reply.status}
+              </small>
+              {canReply && <button onClick={() => onReply(reply)}>回复</button>}
+            </div>
+            <CommentReplyList replies={reply.replies} statusText={statusText} canReply={canReply} onReply={onReply} />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
 }
 
 function Comments({ onModerate, onReply, canReply, saving }) {
@@ -137,64 +1622,477 @@ function Comments({ onModerate, onReply, canReply, saving }) {
   const [expandedReplyIds, setExpandedReplyIds] = useState(() => new Set());
   const [state, setState] = useState({ loading: true, items: [], meta: {}, error: '' });
   const load = () => {
-    setState(value => ({ ...value, loading: true, error: '' }));
-    studioApi.comments({ keyword: keyword.trim(), status, owner, sort, page, page_size: pageSize })
-      .then(result => setState({ loading: false, items: result.data || [], meta: result.meta || {}, error: '' }))
-      .catch(reason => setState({ loading: false, items: [], meta: {}, error: reason.message || '无法读取评论。' }));
+    setState((value) => ({ ...value, loading: true, error: '' }));
+    studioApi
+      .comments({ keyword: keyword.trim(), status, owner, sort, page, page_size: pageSize })
+      .then((result) => setState({ loading: false, items: result.data || [], meta: result.meta || {}, error: '' }))
+      .catch((reason) => setState({ loading: false, items: [], meta: {}, error: reason.message || '无法读取评论。' }));
   };
-  useEffect(() => { const timer = window.setTimeout(load, keyword ? 250 : 0); return () => window.clearTimeout(timer); }, [keyword, status, owner, sort, page, pageSize]);
-  const change = setter => value => { setPage(1); setter(value); };
+  useEffect(() => {
+    const timer = window.setTimeout(load, keyword ? 250 : 0);
+    return () => window.clearTimeout(timer);
+  }, [keyword, status, owner, sort, page, pageSize]);
+  const change = (setter) => (value) => {
+    setPage(1);
+    setter(value);
+  };
   const totalPages = state.meta.totalPages || 0;
-  const pageNumbers = totalPages <= 7 ? Array.from({ length: totalPages }, (_, index) => index + 1) : Array.from(new Set([1, Math.max(1, page - 1), page, Math.min(totalPages, page + 1), totalPages]));
+  const pageNumbers = pageWindow(page, totalPages);
   const statusText = { pending: '待审核', approved: '已通过', rejected: '已拒绝', spam: '垃圾评论' };
-  return <>
-    <div className="studioHeading commentHeading"><div><p>互动管理</p><h1>评论</h1></div></div>
-    <section className="commentWorkbench">
-      <div className="commentToolbar">
-        <label className="commentSearch"><Search size={17}/><input value={keyword} onChange={event => change(setKeyword)(event.target.value)} placeholder="搜索评论内容或作者"/></label>
-        <div className="commentFilters">
-          <label>状态<select value={status} onChange={event => change(setStatus)(event.target.value)}><option value="all">全部</option><option value="pending">待审核</option><option value="approved">已通过</option><option value="rejected">已拒绝</option><option value="spam">垃圾评论</option></select></label>
-          <label>作者<select value={owner} onChange={event => change(setOwner)(event.target.value)}><option value="all">全部</option><option value="visitor">历史访客</option><option value="member">注册用户</option></select></label>
-          <label>排序<select value={sort} onChange={event => change(setSort)(event.target.value)}><option value="newest">最新优先</option><option value="oldest">最早优先</option></select></label>
-          <button onClick={load} aria-label="刷新评论"><RefreshCw size={17}/></button>
+  return (
+    <>
+      <div className="studioHeading commentHeading">
+        <div>
+          <p>互动管理</p>
+          <h1>评论</h1>
         </div>
       </div>
-      {state.loading ? <Empty>正在读取评论…</Empty> : state.error ? <div className="mediaLoadError">{state.error}<button onClick={load}>重试</button></div> : state.items.length ? <div className="commentReviewList">
-        {state.items.map(comment => <article key={comment.id}>
-          <div className={`commentAuthorAvatar ${comment.authorKind}`} aria-hidden="true">{(comment.authorName || '访').slice(0, 1)}</div>
-          <div className="commentReviewBody">
-            <div className="commentReviewMeta"><b>{comment.authorName}</b><span>评论于</span>{comment.targetPath ? <a className="commentTargetLink" href={comment.targetPath} target="_blank" rel="noopener noreferrer">{comment.targetTitle}</a> : <strong>{comment.targetTitle}</strong>}</div>
-            <p>{comment.content}</p>
-            <div className="commentReviewActions"><small className={comment.status === 'approved' ? 'publishedPill' : 'draftPill'}>{statusText[comment.status] || comment.status}</small>{comment.replies?.length ? <button className="commentReplyCount" onClick={() => setExpandedReplyIds(current => { const next = new Set(current); next.has(comment.id) ? next.delete(comment.id) : next.add(comment.id); return next; })} aria-expanded={expandedReplyIds.has(comment.id)}>{comment.replyCount || 0} 条回复</button> : <span className="commentReplyCount unavailable">{comment.replyCount || 0} 条回复</span>}{comment.status !== 'approved' && <button onClick={async () => { await onModerate(comment, 'approved'); load(); }}>通过</button>}{comment.status !== 'rejected' && <button onClick={async () => { await onModerate(comment, 'rejected'); load(); }}>拒绝</button>}{comment.status !== 'spam' && <button onClick={async () => { await onModerate(comment, 'spam'); load(); }}>垃圾</button>}{canReply && <button onClick={() => setReplying(comment)}>回复</button>}</div>
-            {expandedReplyIds.has(comment.id) && <CommentReplyList replies={comment.replies} statusText={statusText} canReply={canReply} onReply={setReplying}/>}
+      <section className="commentWorkbench">
+        <div className="commentToolbar">
+          <label className="commentSearch">
+            <Search size={17} />
+            <input value={keyword} onChange={(event) => change(setKeyword)(event.target.value)} placeholder="搜索评论内容或作者" />
+          </label>
+          <div className="commentFilters">
+            <label>
+              状态
+              <select value={status} onChange={(event) => change(setStatus)(event.target.value)}>
+                <option value="all">全部</option>
+                <option value="pending">待审核</option>
+                <option value="approved">已通过</option>
+                <option value="rejected">已拒绝</option>
+                <option value="spam">垃圾评论</option>
+              </select>
+            </label>
+            <label>
+              作者
+              <select value={owner} onChange={(event) => change(setOwner)(event.target.value)}>
+                <option value="all">全部</option>
+                <option value="visitor">历史访客</option>
+                <option value="member">注册用户</option>
+              </select>
+            </label>
+            <label>
+              排序
+              <select value={sort} onChange={(event) => change(setSort)(event.target.value)}>
+                <option value="newest">最新优先</option>
+                <option value="oldest">最早优先</option>
+              </select>
+            </label>
+            <button onClick={load} aria-label="刷新评论">
+              <RefreshCw size={17} />
+            </button>
           </div>
-          <time>{new Date(comment.ctime).toLocaleDateString('zh-CN')}</time>
-        </article>)}
-      </div> : <Empty>没有符合筛选条件的评论。</Empty>}
-      <footer className="commentPagination"><span>共 {state.meta.total || 0} 条评论</span><nav aria-label="评论分页"><button disabled={page === 1 || state.loading} onClick={() => setPage(page - 1)} aria-label="上一页"><ChevronLeft size={16}/></button>{pageNumbers.map((number, index) => <React.Fragment key={number}>{index > 0 && number - pageNumbers[index - 1] > 1 && <i>…</i>}<button className={number === page ? 'active' : ''} disabled={state.loading} onClick={() => setPage(number)}>{number}</button></React.Fragment>)}<button disabled={page >= Math.max(1, totalPages) || state.loading} onClick={() => setPage(page + 1)} aria-label="下一页"><ChevronRight size={16}/></button><span className="commentPageInfo">{page} / {Math.max(1, totalPages)}</span><label className="commentPageSize">每页<select value={pageSize} onChange={event => { setPage(1); setPageSize(Number(event.target.value)); }}><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>条</label></nav></footer>
-    </section>
-    {replying && <CommentReplyEditor comment={replying} saving={saving} onClose={() => setReplying(null)} onSave={async content => { await onReply(replying, content); setReplying(null); load(); }}/>}
-  </>;
+        </div>
+        {state.loading ? (
+          <Empty>正在读取评论…</Empty>
+        ) : state.error ? (
+          <div className="mediaLoadError">
+            {state.error}
+            <button onClick={load}>重试</button>
+          </div>
+        ) : state.items.length ? (
+          <div className="commentReviewList">
+            {state.items.map((comment) => (
+              <article key={comment.id}>
+                <div className={`commentAuthorAvatar ${comment.authorKind}`} aria-hidden="true">
+                  {(comment.authorName || '访').slice(0, 1)}
+                </div>
+                <div className="commentReviewBody">
+                  <div className="commentReviewMeta">
+                    <b>{comment.authorName}</b>
+                    <span>评论于</span>
+                    {comment.targetPath ? (
+                      <a className="commentTargetLink" href={comment.targetPath} target="_blank" rel="noopener noreferrer">
+                        {comment.targetTitle}
+                      </a>
+                    ) : (
+                      <strong>{comment.targetTitle}</strong>
+                    )}
+                  </div>
+                  <p>{comment.content}</p>
+                  <div className="commentReviewActions">
+                    <small className={comment.status === 'approved' ? 'publishedPill' : 'draftPill'}>
+                      {statusText[comment.status] || comment.status}
+                    </small>
+                    {comment.replies?.length ? (
+                      <button
+                        className="commentReplyCount"
+                        onClick={() =>
+                          setExpandedReplyIds((current) => {
+                            const next = new Set(current);
+                            next.has(comment.id) ? next.delete(comment.id) : next.add(comment.id);
+                            return next;
+                          })
+                        }
+                        aria-expanded={expandedReplyIds.has(comment.id)}
+                      >
+                        {comment.replyCount || 0} 条回复
+                      </button>
+                    ) : (
+                      <span className="commentReplyCount unavailable">{comment.replyCount || 0} 条回复</span>
+                    )}
+                    {comment.status !== 'approved' && (
+                      <button
+                        onClick={async () => {
+                          await onModerate(comment, 'approved');
+                          load();
+                        }}
+                      >
+                        通过
+                      </button>
+                    )}
+                    {comment.status !== 'rejected' && (
+                      <button
+                        onClick={async () => {
+                          await onModerate(comment, 'rejected');
+                          load();
+                        }}
+                      >
+                        拒绝
+                      </button>
+                    )}
+                    {comment.status !== 'spam' && (
+                      <button
+                        onClick={async () => {
+                          await onModerate(comment, 'spam');
+                          load();
+                        }}
+                      >
+                        垃圾
+                      </button>
+                    )}
+                    {canReply && <button onClick={() => setReplying(comment)}>回复</button>}
+                  </div>
+                  {expandedReplyIds.has(comment.id) && (
+                    <CommentReplyList replies={comment.replies} statusText={statusText} canReply={canReply} onReply={setReplying} />
+                  )}
+                </div>
+                <time>{new Date(comment.ctime).toLocaleDateString('zh-CN')}</time>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty>没有符合筛选条件的评论。</Empty>
+        )}
+        <footer className="commentPagination">
+          <span>共 {state.meta.total || 0} 条评论</span>
+          <nav aria-label="评论分页">
+            <button disabled={page === 1 || state.loading} onClick={() => setPage(page - 1)} aria-label="上一页">
+              <ChevronLeft size={16} />
+            </button>
+            {pageNumbers.map((number, index) => (
+              <React.Fragment key={number}>
+                {index > 0 && number - pageNumbers[index - 1] > 1 && <i>…</i>}
+                <button className={number === page ? 'active' : ''} disabled={state.loading} onClick={() => setPage(number)}>
+                  {number}
+                </button>
+              </React.Fragment>
+            ))}
+            <button disabled={page >= Math.max(1, totalPages) || state.loading} onClick={() => setPage(page + 1)} aria-label="下一页">
+              <ChevronRight size={16} />
+            </button>
+            <span className="commentPageInfo">
+              {page} / {Math.max(1, totalPages)}
+            </span>
+            <label className="commentPageSize">
+              每页
+              <select
+                value={pageSize}
+                onChange={(event) => {
+                  setPage(1);
+                  setPageSize(Number(event.target.value));
+                }}
+              >
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              条
+            </label>
+          </nav>
+        </footer>
+      </section>
+      {replying && (
+        <CommentReplyEditor
+          comment={replying}
+          saving={saving}
+          onClose={() => setReplying(null)}
+          onSave={async (content) => {
+            await onReply(replying, content);
+            setReplying(null);
+            load();
+          }}
+        />
+      )}
+    </>
+  );
 }
 function CommentReplyEditor({ comment, saving, onClose, onSave }) {
   const [content, setContent] = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
   const emojis = ['😀', '😂', '😊', '😍', '🤔', '😅', '😭', '😎', '👍', '👎', '👏', '🎉', '🔥', '❤️', '✨', '🐱'];
-  return <Modal title={`回复 ${comment.authorName}`} onClose={onClose} actions={<><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !content.trim()} onClick={() => onSave(content.trim())}>{saving ? '发送中…' : '发送回复'}</button></>}><Field label="回复内容"><textarea autoFocus rows="6" value={content} onChange={event => setContent(event.target.value)} placeholder="管理员回复会自动审核通过并显示在该评论下。"/><div className="studioReplyEmoji"><button type="button" onClick={() => setEmojiOpen(value => !value)} aria-expanded={emojiOpen}><Smile size={16}/>表情</button>{emojiOpen && <div>{emojis.map(emoji => <button type="button" key={emoji} onClick={() => { setContent(value => `${value}${emoji}`); setEmojiOpen(false); }} aria-label={`插入 ${emoji}`}>{emoji}</button>)}</div>}</div></Field></Modal>;
+  return (
+    <Modal
+      title={`回复 ${comment.authorName}`}
+      onClose={onClose}
+      actions={
+        <>
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button className="primaryButton" disabled={saving || !content.trim()} onClick={() => onSave(content.trim())}>
+            {saving ? '发送中…' : '发送回复'}
+          </button>
+        </>
+      }
+    >
+      <Field label="回复内容">
+        <textarea
+          autoFocus
+          rows="6"
+          value={content}
+          onChange={(event) => setContent(event.target.value)}
+          placeholder="管理员回复会自动审核通过并显示在该评论下。"
+        />
+        <div className="studioReplyEmoji">
+          <button type="button" onClick={() => setEmojiOpen((value) => !value)} aria-expanded={emojiOpen}>
+            <Smile size={16} />
+            表情
+          </button>
+          {emojiOpen && (
+            <div>
+              {emojis.map((emoji) => (
+                <button
+                  type="button"
+                  key={emoji}
+                  onClick={() => {
+                    setContent((value) => `${value}${emoji}`);
+                    setEmojiOpen(false);
+                  }}
+                  aria-label={`插入 ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </Field>
+    </Modal>
+  );
 }
 
-function FriendLinkEditor({ item, saving, onClose, onSave }) { const [form, setForm] = useState(item || blankFriendLink); const set = (key, value) => setForm(current => ({ ...current, [key]: value })); return <Modal title={item?.id ? '编辑友情链接' : '新增友情链接'} onClose={onClose} actions={<><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !form.name || !form.url} onClick={() => onSave(form)}>{saving ? '保存中…' : '保存链接'}</button></>}><div className="editorGrid"><Field label="名称"><input autoFocus value={form.name} onChange={event => set('name', event.target.value)}/></Field><Field label="链接地址"><input value={form.url} onChange={event => set('url', event.target.value)} placeholder="https://…"/></Field><Field label="语言"><select value={form.locale} onChange={event => set('locale', event.target.value)}><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></Field><Field label="排序"><input type="number" min="0" value={form.sortOrder || 0} onChange={event => set('sortOrder', Number(event.target.value))}/></Field></div><Field label="Logo 完整 URL"><input value={form.logoUrl || ''} onChange={event => set('logoUrl', event.target.value)} placeholder="https://…"/></Field><Field label="简介"><textarea rows="3" value={form.description || ''} onChange={event => set('description', event.target.value)}/></Field><div className="editorGrid"><Field label="打开方式"><select value={form.target} onChange={event => set('target', event.target.value)}><option value="_blank">新窗口</option><option value="_self">当前窗口</option></select></Field><Field label="rel"><input value={form.rel || ''} onChange={event => set('rel', event.target.value)}/></Field></div></Modal>; }
-function FriendLinkManager({ items, saving, onSave, onDelete }) { const [editing, setEditing] = useState(null); const [removing, setRemoving] = useState(null); const [query, setQuery] = useState(''); const visible = items.filter(item => `${item.name} ${item.url}`.toLowerCase().includes(query.toLowerCase())); return <><div className="studioHeading adminListHeading"><div><p>站点结构</p><h1>友情链接 <small>{visible.length} 项</small></h1></div><button className="primaryButton" onClick={() => setEditing({})}><Plus size={17}/>新增链接</button></div><section className="adminDirectory"><AdminListToolbar query={query} onQuery={setQuery}><label>语言<select defaultValue="all"><option value="all">全部</option><option>简体中文</option><option>English</option></select></label><label>排序<select defaultValue="default"><option value="default">默认</option></select></label></AdminListToolbar><div className="adminListRows">{visible.map(item => <article key={item.id}><label className="adminListCheck"><input type="checkbox" aria-label={`选择 ${item.name}`}/></label><div className="adminListPrimary withAvatar">{item.logoUrl ? <img src={item.logoUrl} alt=""/> : <span>{item.name.slice(0, 1)}</span>}<div><b>{item.name}</b><span>{item.locale} · {item.url}</span></div></div><div className="adminListActions"><span className="adminTypePill">{item.target === '_blank' ? '新窗口' : '当前页'}</span><button onClick={() => setEditing(item)}><Pencil size={16}/>编辑</button><button className="dangerIcon" onClick={() => setRemoving(item)}><Trash2 size={16}/></button></div></article>)}</div><AdminListFooter total={visible.length}/></section>{editing && <FriendLinkEditor item={editing.id ? editing : null} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSave(form, editing.id ? editing : null); setEditing(null); }}/>} {removing && <Modal title="确认删除友情链接" onClose={() => setRemoving(null)} actions={<><button className="secondaryButton" onClick={() => setRemoving(null)}>取消</button><button className="dangerButton" disabled={saving} onClick={async () => { await onDelete(removing); setRemoving(null); }}>{saving ? '删除中…' : '确认删除'}</button></>}><p>将软删除「{removing.name}」。</p></Modal>}</>; }
+function FriendLinkEditor({ item, saving, onClose, onSave }) {
+  const [form, setForm] = useState(item || blankFriendLink);
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  return (
+    <Modal
+      title={item?.id ? '编辑友情链接' : '新增友情链接'}
+      onClose={onClose}
+      actions={
+        <>
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button className="primaryButton" disabled={saving || !form.name || !form.url} onClick={() => onSave(form)}>
+            {saving ? '保存中…' : '保存链接'}
+          </button>
+        </>
+      }
+    >
+      <div className="editorGrid">
+        <Field label="名称">
+          <input autoFocus value={form.name} onChange={(event) => set('name', event.target.value)} />
+        </Field>
+        <Field label="链接地址">
+          <input value={form.url} onChange={(event) => set('url', event.target.value)} placeholder="https://…" />
+        </Field>
+        <Field label="语言">
+          <select value={form.locale} onChange={(event) => set('locale', event.target.value)}>
+            <option value="zh-CN">简体中文</option>
+            <option value="en-US">English</option>
+          </select>
+        </Field>
+        <Field label="排序">
+          <input type="number" min="0" value={form.sortOrder || 0} onChange={(event) => set('sortOrder', Number(event.target.value))} />
+        </Field>
+      </div>
+      <Field label="Logo 完整 URL">
+        <input value={form.logoUrl || ''} onChange={(event) => set('logoUrl', event.target.value)} placeholder="https://…" />
+      </Field>
+      <Field label="简介">
+        <textarea rows="3" value={form.description || ''} onChange={(event) => set('description', event.target.value)} />
+      </Field>
+      <div className="editorGrid">
+        <Field label="打开方式">
+          <select value={form.target} onChange={(event) => set('target', event.target.value)}>
+            <option value="_blank">新窗口</option>
+            <option value="_self">当前窗口</option>
+          </select>
+        </Field>
+        <Field label="rel">
+          <input value={form.rel || ''} onChange={(event) => set('rel', event.target.value)} />
+        </Field>
+      </div>
+    </Modal>
+  );
+}
+function FriendLinkManager({ items, saving, onSave, onDelete }) {
+  const [editing, setEditing] = useState(null);
+  const [removing, setRemoving] = useState(null);
+  const [query, setQuery] = useState('');
+  const visible = items.filter((item) => `${item.name} ${item.url}`.toLowerCase().includes(query.toLowerCase()));
+  return (
+    <>
+      <div className="studioHeading adminListHeading">
+        <div>
+          <p>站点结构</p>
+          <h1>
+            友情链接 <small>{visible.length} 项</small>
+          </h1>
+        </div>
+        <button className="primaryButton" onClick={() => setEditing({})}>
+          <Plus size={17} />
+          新增链接
+        </button>
+      </div>
+      <section className="adminDirectory">
+        <AdminListToolbar query={query} onQuery={setQuery}>
+          <label>
+            语言
+            <select defaultValue="all">
+              <option value="all">全部</option>
+              <option>简体中文</option>
+              <option>English</option>
+            </select>
+          </label>
+          <label>
+            排序
+            <select defaultValue="default">
+              <option value="default">默认</option>
+            </select>
+          </label>
+        </AdminListToolbar>
+        <div className="adminListRows">
+          {visible.map((item) => (
+            <article key={item.id}>
+              <label className="adminListCheck">
+                <input type="checkbox" aria-label={`选择 ${item.name}`} />
+              </label>
+              <div className="adminListPrimary withAvatar">
+                {item.logoUrl ? <img src={item.logoUrl} alt="" /> : <span>{item.name.slice(0, 1)}</span>}
+                <div>
+                  <b>{item.name}</b>
+                  <span>
+                    {item.locale} · {item.url}
+                  </span>
+                </div>
+              </div>
+              <div className="adminListActions">
+                <span className="adminTypePill">{item.target === '_blank' ? '新窗口' : '当前页'}</span>
+                <button onClick={() => setEditing(item)}>
+                  <Pencil size={16} />
+                  编辑
+                </button>
+                <button className="dangerIcon" onClick={() => setRemoving(item)}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+        <AdminListFooter total={visible.length} />
+      </section>
+      {editing && (
+        <FriendLinkEditor
+          item={editing.id ? editing : null}
+          saving={saving}
+          onClose={() => setEditing(null)}
+          onSave={async (form) => {
+            await onSave(form, editing.id ? editing : null);
+            setEditing(null);
+          }}
+        />
+      )}{' '}
+      {removing && (
+        <Modal
+          title="确认删除友情链接"
+          onClose={() => setRemoving(null)}
+          actions={
+            <>
+              <button className="secondaryButton" onClick={() => setRemoving(null)}>
+                取消
+              </button>
+              <button
+                className="dangerButton"
+                disabled={saving}
+                onClick={async () => {
+                  await onDelete(removing);
+                  setRemoving(null);
+                }}
+              >
+                {saving ? '删除中…' : '确认删除'}
+              </button>
+            </>
+          }
+        >
+          <p>将软删除「{removing.name}」。</p>
+        </Modal>
+      )}
+    </>
+  );
+}
 
-function MediaEditor({ item, saving, onClose, onSave }) { const [form, setForm] = useState({ originalName: item.originalName || '', postId: item.postId || '' }); return <Modal title="编辑附件元数据" onClose={onClose} actions={<><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving} onClick={() => onSave({ originalName: form.originalName || null, postId: form.postId || null })}>{saving ? '保存中…' : '保存'}</button></>}><Field label="原始文件名"><input autoFocus value={form.originalName} onChange={event => setForm(current => ({ ...current, originalName: event.target.value }))}/></Field><Field label="关联文章 ID（可选）"><input value={form.postId} onChange={event => setForm(current => ({ ...current, postId: event.target.value }))} placeholder="留空表示独立附件"/></Field><Field label="稳定访问地址"><input value={item.sourceUrl} readOnly/></Field></Modal>; }
-const mediaKind = mimeType => {
+function MediaEditor({ item, saving, onClose, onSave }) {
+  const [form, setForm] = useState({ originalName: item.originalName || '', postId: item.postId || '' });
+  return (
+    <Modal
+      title="编辑附件元数据"
+      onClose={onClose}
+      actions={
+        <>
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button
+            className="primaryButton"
+            disabled={saving}
+            onClick={() => onSave({ originalName: form.originalName || null, postId: form.postId || null })}
+          >
+            {saving ? '保存中…' : '保存'}
+          </button>
+        </>
+      }
+    >
+      <Field label="原始文件名">
+        <input
+          autoFocus
+          value={form.originalName}
+          onChange={(event) => setForm((current) => ({ ...current, originalName: event.target.value }))}
+        />
+      </Field>
+      <Field label="关联文章 ID（可选）">
+        <input
+          value={form.postId}
+          onChange={(event) => setForm((current) => ({ ...current, postId: event.target.value }))}
+          placeholder="留空表示独立附件"
+        />
+      </Field>
+      <Field label="稳定访问地址">
+        <input value={item.sourceUrl} readOnly />
+      </Field>
+    </Modal>
+  );
+}
+const mediaKind = (mimeType) => {
   if (mimeType?.startsWith('image/')) return 'image';
   if (mimeType?.startsWith('video/')) return 'video';
   if (mimeType?.startsWith('audio/')) return 'audio';
   if (mimeType?.startsWith('application/') || mimeType?.startsWith('text/')) return 'document';
   return 'other';
 };
-const readableBytes = value => {
+const readableBytes = (value) => {
   const size = Number(value || 0);
   if (size < 1024) return `${size} B`;
   if (size < 1024 ** 2) return `${(size / 1024).toFixed(1)} KB`;
@@ -204,145 +2102,1704 @@ const readableBytes = value => {
 function MediaPreview({ item, onPreview }) {
   const type = mediaKind(item.mimeType);
   const Icon = type === 'video' ? Video : type === 'audio' ? Music : type === 'image' ? ImageIcon : File;
-  return <button className={`mediaPreview ${type}`} onClick={() => onPreview(item)} title="预览附件"><Icon className="mediaFallbackIcon" size={28}/>{type === 'image' && <img src={item.sourceUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }}/>}</button>;
+  return (
+    <button className={`mediaPreview ${type}`} onClick={() => onPreview(item)} title="预览附件">
+      <Icon className="mediaFallbackIcon" size={28} />
+      {type === 'image' && (
+        <img
+          src={item.sourceUrl}
+          alt=""
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.display = 'none';
+          }}
+        />
+      )}
+    </button>
+  );
 }
 
 function MediaUploadDialog({ galleries, onClose, onUploaded }) {
-  const picker = useRef(null); const [files, setFiles] = useState([]); const [galleryId, setGalleryId] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
-  const addFiles = incoming => setFiles(current => [...current, ...Array.from(incoming)].filter((file, index, all) => all.findIndex(value => value.name === file.name && value.size === file.size) === index));
+  const picker = useRef(null);
+  const [files, setFiles] = useState([]);
+  const [galleryId, setGalleryId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const addFiles = (incoming) =>
+    setFiles((current) =>
+      [...current, ...Array.from(incoming)].filter(
+        (file, index, all) => all.findIndex((value) => value.name === file.name && value.size === file.size) === index,
+      ),
+    );
   const uploadFiles = async () => {
-    if (!files.length) { setError('请选择至少一个附件。'); return; }
-    setBusy(true); setError('');
-    try { for (const file of files) await studioApi.uploadMedia(file, { galleryId }); await onUploaded(); onClose(); }
-    catch (reason) { setError(reason.message || '附件上传失败。'); }
-    finally { setBusy(false); }
+    if (!files.length) {
+      setError('请选择至少一个附件。');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      for (const file of files) await studioApi.uploadMedia(file, { galleryId });
+      await onUploaded();
+      onClose();
+    } catch (reason) {
+      setError(reason.message || '附件上传失败。');
+    } finally {
+      setBusy(false);
+    }
   };
-  return <div className="mediaOverlay" role="dialog" aria-modal="true" aria-label="上传附件"><header><h2>上传附件</h2><button onClick={onClose} aria-label="关闭"><X size={22}/></button></header><div className="mediaOverlayBody"><section className="uploadChoices"><b>存储策略</b><div><button className="active"><span>S3 对象存储</span><small>上传后自动写入完整访问地址</small><Check size={18}/></button></div></section><section className="uploadChoices"><b>分组</b><div><button className={!galleryId ? 'active' : ''} onClick={() => setGalleryId('')}><span>未分组</span>{!galleryId && <Check size={18}/>}</button>{galleries.map(gallery => <button className={galleryId === gallery.id ? 'active' : ''} onClick={() => setGalleryId(gallery.id)} key={gallery.id}><span>{gallery.name}</span>{galleryId === gallery.id && <Check size={18}/>}</button>)}</div></section><section className="uploadDropzone" onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); addFiles(event.dataTransfer.files); }}><input ref={picker} type="file" multiple onChange={event => addFiles(event.target.files)}/><UploadCloud size={36}/><strong>将文件拖到这里，或 <button onClick={() => picker.current?.click()}>选择文件</button></strong><small>单个附件最大 50 MiB，将直接写入 S3 对象存储。</small></section>{files.length > 0 && <div className="uploadQueue">{files.map(file => <div key={`${file.name}-${file.size}`}><span>{file.name}</span><small>{readableBytes(file.size)}</small><button disabled={busy} onClick={() => setFiles(current => current.filter(value => value !== file))}><X size={15}/></button></div>)}</div>}{error && <p className="mediaLoadError">{error}</p>}</div><footer><button className="secondaryButton" disabled={busy} onClick={onClose}>取消</button><button className="primaryButton" disabled={busy || !files.length} onClick={uploadFiles}>{busy ? '上传中…' : `上传${files.length ? ` ${files.length} 个文件` : ''}`}</button></footer></div>;
+  return (
+    <div className="mediaOverlay" role="dialog" aria-modal="true" aria-label="上传附件">
+      <header>
+        <h2>上传附件</h2>
+        <button onClick={onClose} aria-label="关闭">
+          <X size={22} />
+        </button>
+      </header>
+      <div className="mediaOverlayBody">
+        <section className="uploadChoices">
+          <b>存储策略</b>
+          <div>
+            <button className="active">
+              <span>S3 对象存储</span>
+              <small>上传后自动写入完整访问地址</small>
+              <Check size={18} />
+            </button>
+          </div>
+        </section>
+        <section className="uploadChoices">
+          <b>分组</b>
+          <div>
+            <button className={!galleryId ? 'active' : ''} onClick={() => setGalleryId('')}>
+              <span>未分组</span>
+              {!galleryId && <Check size={18} />}
+            </button>
+            {galleries.map((gallery) => (
+              <button className={galleryId === gallery.id ? 'active' : ''} onClick={() => setGalleryId(gallery.id)} key={gallery.id}>
+                <span>{gallery.name}</span>
+                {galleryId === gallery.id && <Check size={18} />}
+              </button>
+            ))}
+          </div>
+        </section>
+        <section
+          className="uploadDropzone"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            addFiles(event.dataTransfer.files);
+          }}
+        >
+          <input ref={picker} type="file" multiple onChange={(event) => addFiles(event.target.files)} />
+          <UploadCloud size={36} />
+          <strong>
+            将文件拖到这里，或 <button onClick={() => picker.current?.click()}>选择文件</button>
+          </strong>
+          <small>单个附件最大 50 MiB，将直接写入 S3 对象存储。</small>
+        </section>
+        {files.length > 0 && (
+          <div className="uploadQueue">
+            {files.map((file) => (
+              <div key={`${file.name}-${file.size}`}>
+                <span>{file.name}</span>
+                <small>{readableBytes(file.size)}</small>
+                <button disabled={busy} onClick={() => setFiles((current) => current.filter((value) => value !== file))}>
+                  <X size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {error && <p className="mediaLoadError">{error}</p>}
+      </div>
+      <footer>
+        <button className="secondaryButton" disabled={busy} onClick={onClose}>
+          取消
+        </button>
+        <button className="primaryButton" disabled={busy || !files.length} onClick={uploadFiles}>
+          {busy ? '上传中…' : `上传${files.length ? ` ${files.length} 个文件` : ''}`}
+        </button>
+      </footer>
+    </div>
+  );
 }
 
 function MediaInspector({ item, assets, onClose, onNavigate }) {
-  const type = mediaKind(item.mimeType); const position = assets.findIndex(asset => asset.id === item.id); const previous = assets[position - 1]; const next = assets[position + 1];
-  const [copied, setCopied] = useState(''); const copy = async (name, value) => { await navigator.clipboard?.writeText(value); setCopied(name); window.setTimeout(() => setCopied(''), 1400); };
-  useEffect(() => { const closeOnEscape = event => { if (event.key === 'Escape') onClose(); }; window.addEventListener('keydown', closeOnEscape); return () => window.removeEventListener('keydown', closeOnEscape); }, [onClose]);
-  const title = item.originalName || '未命名附件'; const htmlEscape = value => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); const markdownEscape = value => String(value).replace(/[\\\[\]]/g, '\\$&'); const html = `<img src="${htmlEscape(item.sourceUrl)}" alt="${htmlEscape(title)}" />`; const markdown = `![${markdownEscape(title)}](${item.sourceUrl})`;
-  return <div className="mediaOverlay inspectorOverlay" role="dialog" aria-modal="true" aria-label="附件预览"><header><h2>附件：{title}</h2><div>{previous && <button onClick={() => onNavigate(previous)} aria-label="上一个附件"><ChevronLeft size={22}/></button>}{next && <button onClick={() => onNavigate(next)} aria-label="下一个附件"><ChevronRight size={22}/></button>}<button onClick={onClose} aria-label="关闭"><X size={22}/></button></div></header><div className="mediaInspector"><section className="mediaInspectorPreview">{type === 'image' ? <img src={item.sourceUrl} alt={title}/> : <div><File size={52}/><p>{item.mimeType || '未知文件类型'}</p><a href={item.sourceUrl} target="_blank" rel="noreferrer"><Download size={17}/>下载原文件</a></div>}</section><section className="mediaInspectorInfo"><dl><div><dt>分组</dt><dd>{item.galleryNames?.join('、') || '未分组'}</dd></div><div><dt>显示名称</dt><dd>{title}</dd></div><div><dt>媒体类型</dt><dd>{item.mimeType || 'unknown'}</dd></div><div><dt>文件大小</dt><dd>{readableBytes(item.byteSize)}</dd></div><div><dt>创建时间</dt><dd>{item.ctime ? new Date(item.ctime).toLocaleString('zh-CN') : '未知'}</dd></div></dl><div className="mediaCodeLinks">{[['URL', item.sourceUrl], ['HTML', html], ['Markdown', markdown]].map(([label, value]) => <div key={label}><b>{label}</b><code>{value}</code><button onClick={() => copy(label, value)}><Copy size={15}/>{copied === label ? '已复制' : '复制'}</button></div>)}</div></section></div><footer><button className="secondaryButton" onClick={onClose}>关闭（Esc）</button></footer></div>;
+  const type = mediaKind(item.mimeType);
+  const position = assets.findIndex((asset) => asset.id === item.id);
+  const previous = assets[position - 1];
+  const next = assets[position + 1];
+  const [copied, setCopied] = useState('');
+  const copy = async (name, value) => {
+    await navigator.clipboard?.writeText(value);
+    setCopied(name);
+    window.setTimeout(() => setCopied(''), 1400);
+  };
+  useEffect(() => {
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [onClose]);
+  const title = item.originalName || '未命名附件';
+  const htmlEscape = (value) =>
+    String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  const markdownEscape = (value) => String(value).replace(/[\\\[\]]/g, '\\$&');
+  const html = `<img src="${htmlEscape(item.sourceUrl)}" alt="${htmlEscape(title)}" />`;
+  const markdown = `![${markdownEscape(title)}](${item.sourceUrl})`;
+  return (
+    <div className="mediaOverlay inspectorOverlay" role="dialog" aria-modal="true" aria-label="附件预览">
+      <header>
+        <h2>附件：{title}</h2>
+        <div>
+          {previous && (
+            <button onClick={() => onNavigate(previous)} aria-label="上一个附件">
+              <ChevronLeft size={22} />
+            </button>
+          )}
+          {next && (
+            <button onClick={() => onNavigate(next)} aria-label="下一个附件">
+              <ChevronRight size={22} />
+            </button>
+          )}
+          <button onClick={onClose} aria-label="关闭">
+            <X size={22} />
+          </button>
+        </div>
+      </header>
+      <div className="mediaInspector">
+        <section className="mediaInspectorPreview">
+          {type === 'image' ? (
+            <img src={item.sourceUrl} alt={title} />
+          ) : (
+            <div>
+              <File size={52} />
+              <p>{item.mimeType || '未知文件类型'}</p>
+              <a href={item.sourceUrl} target="_blank" rel="noreferrer">
+                <Download size={17} />
+                下载原文件
+              </a>
+            </div>
+          )}
+        </section>
+        <section className="mediaInspectorInfo">
+          <dl>
+            <div>
+              <dt>分组</dt>
+              <dd>{item.galleryNames?.join('、') || '未分组'}</dd>
+            </div>
+            <div>
+              <dt>显示名称</dt>
+              <dd>{title}</dd>
+            </div>
+            <div>
+              <dt>媒体类型</dt>
+              <dd>{item.mimeType || 'unknown'}</dd>
+            </div>
+            <div>
+              <dt>文件大小</dt>
+              <dd>{readableBytes(item.byteSize)}</dd>
+            </div>
+            <div>
+              <dt>创建时间</dt>
+              <dd>{item.ctime ? new Date(item.ctime).toLocaleString('zh-CN') : '未知'}</dd>
+            </div>
+          </dl>
+          <div className="mediaCodeLinks">
+            {[
+              ['URL', item.sourceUrl],
+              ['HTML', html],
+              ['Markdown', markdown],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <b>{label}</b>
+                <code>{value}</code>
+                <button onClick={() => copy(label, value)}>
+                  <Copy size={15} />
+                  {copied === label ? '已复制' : '复制'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+      <footer>
+        <button className="secondaryButton" onClick={onClose}>
+          关闭（Esc）
+        </button>
+      </footer>
+    </div>
+  );
 }
 
-function MediaManager({ items, galleries: initialGalleries = [], saving, onSave, onDelete }) {
-  const [editing, setEditing] = useState(null); const [removing, setRemoving] = useState(null); const [previewing, setPreviewing] = useState(null); const [uploading, setUploading] = useState(false); const [uploadNotice, setUploadNotice] = useState(''); const [query, setQuery] = useState(''); const [debouncedQuery, setDebouncedQuery] = useState(''); const [type, setType] = useState(''); const [sort, setSort] = useState('newest'); const [group, setGroup] = useState('all'); const [page, setPage] = useState(1); const [view, setView] = useState('grid'); const [selected, setSelected] = useState(new Set()); const [assetPage, setAssetPage] = useState({ data: items, meta: { page: 1, pageSize: 60, total: items.length, totalPages: items.length ? 1 : 0 } }); const [loading, setLoading] = useState(false); const [loadError, setLoadError] = useState(''); const [galleryGroups, setGalleryGroups] = useState(initialGalleries);
-  useEffect(() => { studioApi.mediaGroups().then(result => setGalleryGroups(result.data)).catch(() => {}); }, []);
+function MediaManager({ items = [], galleries: initialGalleries = [], saving, onSave, onDelete }) {
+  const [editing, setEditing] = useState(null);
+  const [removing, setRemoving] = useState(null);
+  const [previewing, setPreviewing] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState('');
+  const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [type, setType] = useState('');
+  const [sort, setSort] = useState('newest');
+  const [group, setGroup] = useState('all');
+  const [page, setPage] = useState(1);
+  const [view, setView] = useState('grid');
+  const [selected, setSelected] = useState(new Set());
+  const [assetPage, setAssetPage] = useState({
+    data: items,
+    meta: { page: 1, pageSize: 60, total: items.length, totalPages: items.length ? 1 : 0 },
+  });
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [galleryGroups, setGalleryGroups] = useState(initialGalleries);
+  useEffect(() => {
+    studioApi
+      .mediaGroups()
+      .then((result) => setGalleryGroups(result.data))
+      .catch(() => {});
+  }, []);
   const opaqueGroups = galleryGroups.filter((gallery) => gallery.name?.startsWith('attachment-group-'));
-  const galleries = galleryGroups.map((gallery) => ({ ...gallery, name: gallery.name === 'user-avatar-group' ? '用户头像' : gallery.name?.startsWith('attachment-group-') ? `附件分组 ${opaqueGroups.findIndex((item) => item.id === gallery.id) + 1}` : gallery.name }));
-  const loadAssets = async () => { setLoading(true); setLoadError(''); try { const result = await studioApi.media({ page, page_size: 60, keyword: debouncedQuery, media_type: type, sort, gallery_id: group !== 'all' && group !== 'ungrouped' ? group : '', ungrouped: group === 'ungrouped' || undefined }); setAssetPage(result); setSelected(new Set()); } catch (reason) { setLoadError(reason.message || '无法读取附件。'); } finally { setLoading(false); } };
-  useEffect(() => { loadAssets(); }, [page, type, sort, group, debouncedQuery]);
-  useEffect(() => { const timeout = window.setTimeout(() => { setPage(1); setDebouncedQuery(query.trim()); }, 320); return () => window.clearTimeout(timeout); }, [query]);
-  const changeFilter = (nextGroup, nextType = type) => { setPage(1); setGroup(nextGroup); setType(nextType); };
-  const assets = assetPage.data || []; const meta = assetPage.meta || {}; const totalPages = meta.totalPages || 0; const start = meta.total ? (meta.page - 1) * meta.pageSize + 1 : 0; const end = Math.min(meta.total || 0, (meta.page || 1) * (meta.pageSize || 60)); const selectedAll = assets.length > 0 && assets.every(item => selected.has(item.id)); const toggleAll = () => setSelected(selectedAll ? new Set() : new Set(assets.map(item => item.id))); const toggleOne = id => setSelected(current => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; }); const pageNumbers = totalPages <= 7 ? Array.from({ length: totalPages }, (_, index) => index + 1) : Array.from(new Set([1, Math.max(1, page - 1), page, Math.min(totalPages, page + 1), totalPages]));
-  const assetsWithGroups = assets.map(item => ({ ...item, galleryNames: galleries.filter(gallery => item.galleryIds?.includes(gallery.id)).map(gallery => gallery.name) }));
-  return <><div className="studioHeading mediaHeading"><div><p>内容资产</p><h1>附件管理 <small>{meta.total ?? items.length} 项</small></h1></div><div className="mediaHeadingActions"><span className="storagePolicy">S3 对象存储</span><button className="primaryButton" onClick={() => setUploading(true)}><UploadCloud size={17}/>上传附件</button></div></div><section className="mediaLibrary"><div className="mediaToolbar"><label className="mediaSelectAll"><input type="checkbox" checked={selectedAll} onChange={toggleAll} aria-label="选择当前页全部附件"/></label><div className="mediaSearch"><Search size={17}/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索文件名或地址"/></div><div className="mediaToolbarOptions"><label>类型<select value={type} onChange={event => changeFilter(group, event.target.value)}><option value="">全部</option><option value="image">图片</option><option value="video">视频</option><option value="audio">音频</option><option value="document">文档</option><option value="other">其他</option></select></label><label>排序<select value={sort} onChange={event => { setPage(1); setSort(event.target.value); }}><option value="newest">最新上传</option><option value="oldest">最早上传</option><option value="name">文件名称</option></select></label><div className="mediaViewSwitch"><button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')} aria-label="网格视图"><Grid2X2 size={17}/></button><button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} aria-label="列表视图"><List size={18}/></button><button onClick={loadAssets} aria-label="刷新附件列表"><RefreshCw size={17}/></button></div></div></div><div className="mediaGroups"><button className={group === 'all' ? 'active' : ''} onClick={() => changeFilter('all')}>全部 <small>{meta.total ?? items.length}</small></button><button className={group === 'ungrouped' ? 'active' : ''} onClick={() => changeFilter('ungrouped')}>未分组</button>{galleries.map(gallery => <button className={group === gallery.id ? 'active' : ''} key={gallery.id} onClick={() => changeFilter(gallery.id)} title={gallery.description || gallery.name}>{gallery.name} <small>{gallery.itemCount}</small></button>)}</div>{uploadNotice && <div className="mediaSelectionNotice" role="status">{uploadNotice}<button onClick={() => setUploadNotice('')}>关闭</button></div>}{selected.size > 0 && <div className="mediaSelectionNotice">已选择当前页 {selected.size} 项 <button onClick={() => setSelected(new Set())}>清除选择</button></div>}{loadError ? <div className="mediaLoadError">{loadError}<button onClick={loadAssets}>重试</button></div> : loading && !assets.length ? <Empty>正在读取附件库…</Empty> : assets.length ? <div className={`mediaAssetGrid ${view === 'list' ? 'isList' : ''}`}>{assetsWithGroups.map(item => <article className="mediaAssetCard" key={item.id}><div className="mediaCardTop"><input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} aria-label={`选择 ${item.originalName || '附件'}`}/><span>{mediaKind(item.mimeType)}</span></div><MediaPreview item={item} onPreview={setPreviewing}/><div className="mediaAssetInfo"><b title={item.originalName || item.sourceUrl}>{item.originalName || '未命名附件'}</b><small>{readableBytes(item.byteSize)} · {item.mimeType || 'unknown'}</small></div><div className="mediaAssetActions"><button className="assetPreviewButton" onClick={() => setPreviewing(item)}><Eye size={15}/>预览</button><button onClick={() => setEditing(item)} aria-label="编辑附件"><Pencil size={15}/></button><button className="dangerIcon" onClick={() => setRemoving(item)} aria-label="移除附件"><Trash2 size={15}/></button></div></article>)}</div> : <Empty>没有匹配的附件。</Empty>}<footer className="mediaLibraryFooter"><span>{meta.total ? `显示 ${start}–${end}，共 ${meta.total} 项` : '暂无附件'}</span>{totalPages > 1 && <nav className="studioPagination" aria-label="附件分页"><button disabled={page === 1 || loading} onClick={() => setPage(page - 1)} aria-label="上一页"><ChevronLeft size={16}/></button>{pageNumbers.map((number, index) => <React.Fragment key={number}>{index > 0 && number - pageNumbers[index - 1] > 1 && <span>…</span>}<button className={number === page ? 'active' : ''} disabled={loading} onClick={() => setPage(number)}>{number}</button></React.Fragment>)}<button disabled={page === totalPages || loading} onClick={() => setPage(page + 1)} aria-label="下一页"><ChevronRight size={16}/></button></nav>}</footer></section>{uploading && <MediaUploadDialog galleries={galleries} onClose={() => setUploading(false)} onUploaded={async () => { await loadAssets(); setUploadNotice('附件已上传至 S3 对象存储。'); }}/>} {previewing && <MediaInspector item={previewing} assets={assetsWithGroups} onClose={() => setPreviewing(null)} onNavigate={setPreviewing}/>} {editing && <MediaEditor item={editing} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSave(editing, form); setEditing(null); await loadAssets(); }}/>} {removing && <Modal title="确认移除附件" onClose={() => setRemoving(null)} actions={<><button className="secondaryButton" onClick={() => setRemoving(null)}>取消</button><button className="dangerButton" disabled={saving} onClick={async () => { await onDelete(removing); setRemoving(null); await loadAssets(); }}>{saving ? '删除中…' : '确认移除'}</button></>}><p>附件会从站点资产中失效，并从所有图库移除；原始 S3 对象不会被删除。</p></Modal>}</>;
+  const galleries = galleryGroups.map((gallery) => ({
+    ...gallery,
+    name:
+      gallery.name === 'user-avatar-group'
+        ? '用户头像'
+        : gallery.name?.startsWith('attachment-group-')
+          ? `附件分组 ${opaqueGroups.findIndex((item) => item.id === gallery.id) + 1}`
+          : gallery.name,
+  }));
+  const loadAssets = async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const result = await studioApi.media({
+        page,
+        page_size: 60,
+        keyword: debouncedQuery,
+        media_type: type,
+        sort,
+        gallery_id: group !== 'all' && group !== 'ungrouped' ? group : '',
+        ungrouped: group === 'ungrouped' || undefined,
+      });
+      setAssetPage(result);
+      setSelected(new Set());
+    } catch (reason) {
+      setLoadError(reason.message || '无法读取附件。');
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    loadAssets();
+  }, [page, type, sort, group, debouncedQuery]);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setPage(1);
+      setDebouncedQuery(query.trim());
+    }, 320);
+    return () => window.clearTimeout(timeout);
+  }, [query]);
+  const changeFilter = (nextGroup, nextType = type) => {
+    setPage(1);
+    setGroup(nextGroup);
+    setType(nextType);
+  };
+  const assets = assetPage.data || [];
+  const meta = assetPage.meta || {};
+  const totalPages = meta.totalPages || 0;
+  const start = meta.total ? (meta.page - 1) * meta.pageSize + 1 : 0;
+  const end = Math.min(meta.total || 0, (meta.page || 1) * (meta.pageSize || 60));
+  const selectedAll = assets.length > 0 && assets.every((item) => selected.has(item.id));
+  const toggleAll = () => setSelected(selectedAll ? new Set() : new Set(assets.map((item) => item.id)));
+  const toggleOne = (id) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const pageNumbers = pageWindow(page, totalPages);
+  const assetsWithGroups = assets.map((item) => ({
+    ...item,
+    galleryNames: galleries.filter((gallery) => item.galleryIds?.includes(gallery.id)).map((gallery) => gallery.name),
+  }));
+  return (
+    <>
+      <div className="studioHeading mediaHeading">
+        <div>
+          <p>内容资产</p>
+          <h1>
+            附件管理 <small>{meta.total ?? items.length} 项</small>
+          </h1>
+        </div>
+        <div className="mediaHeadingActions">
+          <span className="storagePolicy">S3 对象存储</span>
+          <button className="primaryButton" onClick={() => setUploading(true)}>
+            <UploadCloud size={17} />
+            上传附件
+          </button>
+        </div>
+      </div>
+      <section className="mediaLibrary">
+        <div className="mediaToolbar">
+          <label className="mediaSelectAll">
+            <input type="checkbox" checked={selectedAll} onChange={toggleAll} aria-label="选择当前页全部附件" />
+          </label>
+          <div className="mediaSearch">
+            <Search size={17} />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索文件名或地址" />
+          </div>
+          <div className="mediaToolbarOptions">
+            <label>
+              类型
+              <select value={type} onChange={(event) => changeFilter(group, event.target.value)}>
+                <option value="">全部</option>
+                <option value="image">图片</option>
+                <option value="video">视频</option>
+                <option value="audio">音频</option>
+                <option value="document">文档</option>
+                <option value="other">其他</option>
+              </select>
+            </label>
+            <label>
+              排序
+              <select
+                value={sort}
+                onChange={(event) => {
+                  setPage(1);
+                  setSort(event.target.value);
+                }}
+              >
+                <option value="newest">最新上传</option>
+                <option value="oldest">最早上传</option>
+                <option value="name">文件名称</option>
+              </select>
+            </label>
+            <div className="mediaViewSwitch">
+              <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')} aria-label="网格视图">
+                <Grid2X2 size={17} />
+              </button>
+              <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} aria-label="列表视图">
+                <List size={18} />
+              </button>
+              <button onClick={loadAssets} aria-label="刷新附件列表">
+                <RefreshCw size={17} />
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="mediaGroups">
+          <button className={group === 'all' ? 'active' : ''} onClick={() => changeFilter('all')}>
+            全部 <small>{meta.total ?? items.length}</small>
+          </button>
+          <button className={group === 'ungrouped' ? 'active' : ''} onClick={() => changeFilter('ungrouped')}>
+            未分组
+          </button>
+          {galleries.map((gallery) => (
+            <button
+              className={group === gallery.id ? 'active' : ''}
+              key={gallery.id}
+              onClick={() => changeFilter(gallery.id)}
+              title={gallery.description || gallery.name}
+            >
+              {gallery.name} <small>{gallery.itemCount}</small>
+            </button>
+          ))}
+        </div>
+        {uploadNotice && (
+          <div className="mediaSelectionNotice" role="status">
+            {uploadNotice}
+            <button onClick={() => setUploadNotice('')}>关闭</button>
+          </div>
+        )}
+        {selected.size > 0 && (
+          <div className="mediaSelectionNotice">
+            已选择当前页 {selected.size} 项 <button onClick={() => setSelected(new Set())}>清除选择</button>
+          </div>
+        )}
+        {loadError ? (
+          <div className="mediaLoadError">
+            {loadError}
+            <button onClick={loadAssets}>重试</button>
+          </div>
+        ) : loading && !assets.length ? (
+          <Empty>正在读取附件库…</Empty>
+        ) : assets.length ? (
+          <div className={`mediaAssetGrid ${view === 'list' ? 'isList' : ''}`}>
+            {assetsWithGroups.map((item) => (
+              <article className="mediaAssetCard" key={item.id}>
+                <div className="mediaCardTop">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(item.id)}
+                    onChange={() => toggleOne(item.id)}
+                    aria-label={`选择 ${item.originalName || '附件'}`}
+                  />
+                  <span>{mediaKind(item.mimeType)}</span>
+                </div>
+                <MediaPreview item={item} onPreview={setPreviewing} />
+                <div className="mediaAssetInfo">
+                  <b title={item.originalName || item.sourceUrl}>{item.originalName || '未命名附件'}</b>
+                  <small>
+                    {readableBytes(item.byteSize)} · {item.mimeType || 'unknown'}
+                  </small>
+                </div>
+                <div className="mediaAssetActions">
+                  <button className="assetPreviewButton" onClick={() => setPreviewing(item)}>
+                    <Eye size={15} />
+                    预览
+                  </button>
+                  <button onClick={() => setEditing(item)} aria-label="编辑附件">
+                    <Pencil size={15} />
+                  </button>
+                  <button className="dangerIcon" onClick={() => setRemoving(item)} aria-label="移除附件">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty>没有匹配的附件。</Empty>
+        )}
+        <footer className="mediaLibraryFooter">
+          <span>{meta.total ? `显示 ${start}–${end}，共 ${meta.total} 项` : '暂无附件'}</span>
+          {totalPages > 1 && (
+            <nav className="studioPagination" aria-label="附件分页">
+              <button disabled={page === 1 || loading} onClick={() => setPage(page - 1)} aria-label="上一页">
+                <ChevronLeft size={16} />
+              </button>
+              {pageNumbers.map((number, index) => (
+                <React.Fragment key={number}>
+                  {index > 0 && number - pageNumbers[index - 1] > 1 && <span>…</span>}
+                  <button className={number === page ? 'active' : ''} disabled={loading} onClick={() => setPage(number)}>
+                    {number}
+                  </button>
+                </React.Fragment>
+              ))}
+              <button disabled={page === totalPages || loading} onClick={() => setPage(page + 1)} aria-label="下一页">
+                <ChevronRight size={16} />
+              </button>
+            </nav>
+          )}
+        </footer>
+      </section>
+      {uploading && (
+        <MediaUploadDialog
+          galleries={galleries}
+          onClose={() => setUploading(false)}
+          onUploaded={async () => {
+            await loadAssets();
+            setUploadNotice('附件已上传至 S3 对象存储。');
+          }}
+        />
+      )}{' '}
+      {previewing && (
+        <MediaInspector item={previewing} assets={assetsWithGroups} onClose={() => setPreviewing(null)} onNavigate={setPreviewing} />
+      )}{' '}
+      {editing && (
+        <MediaEditor
+          item={editing}
+          saving={saving}
+          onClose={() => setEditing(null)}
+          onSave={async (form) => {
+            await onSave(editing, form);
+            setEditing(null);
+            await loadAssets();
+          }}
+        />
+      )}{' '}
+      {removing && (
+        <Modal
+          title="确认移除附件"
+          onClose={() => setRemoving(null)}
+          actions={
+            <>
+              <button className="secondaryButton" onClick={() => setRemoving(null)}>
+                取消
+              </button>
+              <button
+                className="dangerButton"
+                disabled={saving}
+                onClick={async () => {
+                  await onDelete(removing);
+                  setRemoving(null);
+                  await loadAssets();
+                }}
+              >
+                {saving ? '删除中…' : '确认移除'}
+              </button>
+            </>
+          }
+        >
+          <p>附件会从站点资产中失效，并从所有图库移除；原始 S3 对象不会被删除。</p>
+        </Modal>
+      )}
+    </>
+  );
 }
 
-function GalleryEditor({ item, media, saving, onClose, onSave }) { const [form, setForm] = useState(item || blankGallery); const set = (key, value) => setForm(current => ({ ...current, [key]: value })); const selected = new Set(form.mediaIds || []); const toggle = id => set('mediaIds', selected.has(id) ? [...selected].filter(value => value !== id) : [...selected, id]); return <Modal title={item?.id ? '编辑图库' : '新建图库'} onClose={onClose} actions={<><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !form.name || !form.slug} onClick={() => onSave(form)}>{saving ? '保存中…' : '保存图库'}</button></>}><div className="editorGrid"><Field label="名称"><input autoFocus value={form.name} onChange={event => set('name', event.target.value)}/></Field><Field label="slug"><input value={form.slug} onChange={event => set('slug', slugify(event.target.value))}/></Field><Field label="语言"><select value={form.locale} onChange={event => set('locale', event.target.value)}><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></Field><Field label="排序"><input type="number" min="0" value={form.sortOrder || 0} onChange={event => set('sortOrder', Number(event.target.value))}/></Field><Field label="状态"><select value={form.status} onChange={event => set('status', event.target.value)}><option value="draft">草稿</option><option value="published">已发布</option><option value="archived">归档</option></select></Field><Field label="可见性"><select value={form.visibility} onChange={event => set('visibility', event.target.value)}><option value="public">公开</option><option value="unlisted">不收录</option><option value="private">私有</option></select></Field></div><Field label="封面完整 URL"><input value={form.coverUrl || ''} onChange={event => set('coverUrl', event.target.value)} placeholder="https://…"/></Field><Field label="简介"><textarea rows="3" value={form.description || ''} onChange={event => set('description', event.target.value)}/></Field><fieldset className="taxonomyPicker"><legend>图库附件（{selected.size}）</legend>{media.length ? <div>{media.map(asset => <label key={asset.id}><input type="checkbox" checked={selected.has(asset.id)} onChange={() => toggle(asset.id)}/><span>{asset.originalName || asset.sourceUrl}</span></label>)}</div> : <small>暂无可选附件。</small>}</fieldset></Modal>; }
-function GalleryManager({ items, media, saving, onOpen, onSave, onDelete }) { const [editing, setEditing] = useState(null); const [removing, setRemoving] = useState(null); const edit = async item => setEditing(item ? await onOpen(item) : {}); return <><div className="studioHeading"><div><p>内容资产</p><h1>图库</h1></div><button className="primaryButton" onClick={() => edit(null)}><Plus size={17}/>新建图库</button></div><section className="studioPanel"><header><div><h2>图库列表</h2><p>图库可复用附件资产，并单独控制发布状态、封面和排序。</p></div></header>{items.length ? <div className="studioPosts">{items.map(item => <article key={item.id}><div><b>{item.name}</b><span>/{item.slug} · {item.locale} · {item.itemCount} 个附件 · {item.status}</span></div><div className="rowActions"><button onClick={() => edit(item)}><Pencil size={16}/>编辑</button><button className="dangerIcon" onClick={() => setRemoving(item)}><Trash2 size={16}/></button></div></article>)}</div> : <Empty>暂时没有图库。</Empty>}</section>{editing && <GalleryEditor item={editing.id ? editing : null} media={media} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSave(form, editing.id ? editing : null); setEditing(null); }}/>} {removing && <Modal title="确认删除图库" onClose={() => setRemoving(null)} actions={<><button className="secondaryButton" onClick={() => setRemoving(null)}>取消</button><button className="dangerButton" disabled={saving} onClick={async () => { await onDelete(removing); setRemoving(null); }}>{saving ? '删除中…' : '确认删除'}</button></>}><p>图库会从公开端隐藏，附件资产不会被删除。</p></Modal>}</>; }
-
-function UserEditor({ item, media, saving, onClose, onSave }) { const [form, setForm] = useState({ displayName: item.displayName, role: item.role, status: item.status, avatarMediaId: item.avatarMediaId || '' }); const set = (key, value) => setForm(current => ({ ...current, [key]: value })); const images = media.filter(asset => (asset.mimeType || '').startsWith('image/')); return <Modal title="编辑用户权限" onClose={onClose} actions={<><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving} onClick={() => onSave({ ...form, avatarMediaId: form.avatarMediaId || null })}>{saving ? '保存中…' : '保存用户'}</button></>}><Field label="展示名称"><input autoFocus value={form.displayName} onChange={event => set('displayName', event.target.value)}/></Field><div className="editorGrid"><Field label="角色"><select value={form.role} onChange={event => set('role', event.target.value)}><option value="member">member</option><option value="author">author</option><option value="editor">editor</option><option value="admin">admin</option></select></Field><Field label="账号状态"><select value={form.status} onChange={event => set('status', event.target.value)}><option value="pending_verification">待验证</option><option value="active">正常</option><option value="disabled">已禁用</option></select></Field></div><Field label="头像（从附件管理选择）"><select value={form.avatarMediaId} onChange={event => set('avatarMediaId', event.target.value)}><option value="">不设置头像</option>{images.map(asset => <option key={asset.id} value={asset.id}>{asset.originalName || asset.sourceUrl}</option>)}</select></Field><p>邮箱：{item.email}</p></Modal>; }
-function UserManager({ items, media, saving, onSave }) { const [editing, setEditing] = useState(null); const [query, setQuery] = useState(''); const [role, setRole] = useState('all'); const visible = items.filter(item => (role === 'all' || item.role === role) && `${item.displayName} ${item.email}`.toLowerCase().includes(query.toLowerCase())); return <><div className="studioHeading adminListHeading"><div><p>访问控制</p><h1>用户管理 <small>{visible.length} 人</small></h1></div></div><section className="adminDirectory"><AdminListToolbar query={query} onQuery={setQuery}><label>角色<select value={role} onChange={event => setRole(event.target.value)}><option value="all">全部</option><option value="admin">管理员</option><option value="editor">编辑</option><option value="author">作者</option><option value="member">会员</option></select></label><label>排序<select defaultValue="default"><option value="default">默认</option></select></label></AdminListToolbar><div className="adminListRows">{visible.map(item => { const avatar = media.find(asset => asset.id === item.avatarMediaId)?.sourceUrl; return <article key={item.id}><label className="adminListCheck"><input type="checkbox" aria-label={`选择 ${item.displayName}`}/></label><div className="adminListPrimary withAvatar">{avatar ? <img src={avatar} alt=""/> : <span>{(item.displayName || item.email || '用').slice(0, 1)}</span>}<div><b>{item.displayName || '未命名用户'}</b><span>{item.email}</span></div></div><div className="adminListActions"><span className={`adminTypePill ${item.role}`}>{({ admin: '超级管理员', editor: '编辑', author: '作者', member: '访客' })[item.role] || item.role}</span><time>{item.lastLoginAt ? new Date(item.lastLoginAt).toLocaleString('zh-CN') : '从未登录'}</time><button onClick={() => setEditing(item)}><Pencil size={16}/>编辑</button></div></article>; })}</div><AdminListFooter total={visible.length}/></section>{editing && <UserEditor item={editing} media={media} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSave(editing, form); setEditing(null); }}/>}</>; }
+function GalleryEditor({ item, media, saving, onClose, onSave }) {
+  const [form, setForm] = useState(item || blankGallery);
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const selected = new Set(form.mediaIds || []);
+  const toggle = (id) => set('mediaIds', selected.has(id) ? [...selected].filter((value) => value !== id) : [...selected, id]);
+  return (
+    <Modal
+      title={item?.id ? '编辑图库' : '新建图库'}
+      onClose={onClose}
+      actions={
+        <>
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button className="primaryButton" disabled={saving || !form.name || !form.slug} onClick={() => onSave(form)}>
+            {saving ? '保存中…' : '保存图库'}
+          </button>
+        </>
+      }
+    >
+      <div className="editorGrid">
+        <Field label="名称">
+          <input autoFocus value={form.name} onChange={(event) => set('name', event.target.value)} />
+        </Field>
+        <Field label="slug">
+          <input value={form.slug} onChange={(event) => set('slug', slugify(event.target.value))} />
+        </Field>
+        <Field label="语言">
+          <select value={form.locale} onChange={(event) => set('locale', event.target.value)}>
+            <option value="zh-CN">简体中文</option>
+            <option value="en-US">English</option>
+          </select>
+        </Field>
+        <Field label="排序">
+          <input type="number" min="0" value={form.sortOrder || 0} onChange={(event) => set('sortOrder', Number(event.target.value))} />
+        </Field>
+        <Field label="状态">
+          <select value={form.status} onChange={(event) => set('status', event.target.value)}>
+            <option value="draft">草稿</option>
+            <option value="published">已发布</option>
+            <option value="archived">归档</option>
+          </select>
+        </Field>
+        <Field label="可见性">
+          <select value={form.visibility} onChange={(event) => set('visibility', event.target.value)}>
+            <option value="public">公开</option>
+            <option value="unlisted">不收录</option>
+            <option value="private">私有</option>
+          </select>
+        </Field>
+      </div>
+      <Field label="封面完整 URL">
+        <input value={form.coverUrl || ''} onChange={(event) => set('coverUrl', event.target.value)} placeholder="https://…" />
+      </Field>
+      <Field label="简介">
+        <textarea rows="3" value={form.description || ''} onChange={(event) => set('description', event.target.value)} />
+      </Field>
+      <fieldset className="taxonomyPicker">
+        <legend>图库附件（{selected.size}）</legend>
+        {media.length ? (
+          <div>
+            {media.map((asset) => (
+              <label key={asset.id}>
+                <input type="checkbox" checked={selected.has(asset.id)} onChange={() => toggle(asset.id)} />
+                <span>{asset.originalName || asset.sourceUrl}</span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <small>暂无可选附件。</small>
+        )}
+      </fieldset>
+    </Modal>
+  );
+}
+function UserEditor({ item, media, saving, onClose, onSave }) {
+  const [form, setForm] = useState({
+    displayName: item.displayName,
+    role: item.role,
+    status: item.status,
+    avatarMediaId: item.avatarMediaId || '',
+  });
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const images = media.filter((asset) => (asset.mimeType || '').startsWith('image/'));
+  return (
+    <Modal
+      title="编辑用户权限"
+      onClose={onClose}
+      actions={
+        <>
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button
+            className="primaryButton"
+            disabled={saving}
+            onClick={() => onSave({ ...form, avatarMediaId: form.avatarMediaId || null })}
+          >
+            {saving ? '保存中…' : '保存用户'}
+          </button>
+        </>
+      }
+    >
+      <Field label="展示名称">
+        <input autoFocus value={form.displayName} onChange={(event) => set('displayName', event.target.value)} />
+      </Field>
+      <div className="editorGrid">
+        <Field label="角色">
+          <select value={form.role} onChange={(event) => set('role', event.target.value)}>
+            <option value="member">member</option>
+            <option value="author">author</option>
+            <option value="editor">editor</option>
+            <option value="admin">admin</option>
+          </select>
+        </Field>
+        <Field label="账号状态">
+          <select value={form.status} onChange={(event) => set('status', event.target.value)}>
+            <option value="pending_verification">待验证</option>
+            <option value="active">正常</option>
+            <option value="disabled">已禁用</option>
+          </select>
+        </Field>
+      </div>
+      <Field label="头像（从附件管理选择）">
+        <select value={form.avatarMediaId} onChange={(event) => set('avatarMediaId', event.target.value)}>
+          <option value="">不设置头像</option>
+          {images.map((asset) => (
+            <option key={asset.id} value={asset.id}>
+              {asset.originalName || asset.sourceUrl}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <p>邮箱：{item.email}</p>
+    </Modal>
+  );
+}
+function UserManager({ items, media, saving, onSave }) {
+  const [editing, setEditing] = useState(null);
+  const [query, setQuery] = useState('');
+  const [role, setRole] = useState('all');
+  const visible = items.filter(
+    (item) => (role === 'all' || item.role === role) && `${item.displayName} ${item.email}`.toLowerCase().includes(query.toLowerCase()),
+  );
+  return (
+    <>
+      <div className="studioHeading adminListHeading">
+        <div>
+          <p>访问控制</p>
+          <h1>
+            用户管理 <small>{visible.length} 人</small>
+          </h1>
+        </div>
+      </div>
+      <section className="adminDirectory">
+        <AdminListToolbar query={query} onQuery={setQuery}>
+          <label>
+            角色
+            <select value={role} onChange={(event) => setRole(event.target.value)}>
+              <option value="all">全部</option>
+              <option value="admin">管理员</option>
+              <option value="editor">编辑</option>
+              <option value="author">作者</option>
+              <option value="member">会员</option>
+            </select>
+          </label>
+          <label>
+            排序
+            <select defaultValue="default">
+              <option value="default">默认</option>
+            </select>
+          </label>
+        </AdminListToolbar>
+        <div className="adminListRows">
+          {visible.map((item) => {
+            const avatar = media.find((asset) => asset.id === item.avatarMediaId)?.sourceUrl;
+            return (
+              <article key={item.id}>
+                <label className="adminListCheck">
+                  <input type="checkbox" aria-label={`选择 ${item.displayName}`} />
+                </label>
+                <div className="adminListPrimary withAvatar">
+                  {avatar ? <img src={avatar} alt="" /> : <span>{(item.displayName || item.email || '用').slice(0, 1)}</span>}
+                  <div>
+                    <b>{item.displayName || '未命名用户'}</b>
+                    <span>{item.email}</span>
+                  </div>
+                </div>
+                <div className="adminListActions">
+                  <span className={`adminTypePill ${item.role}`}>
+                    {{ admin: '超级管理员', editor: '编辑', author: '作者', member: '访客' }[item.role] || item.role}
+                  </span>
+                  <time>{item.lastLoginAt ? new Date(item.lastLoginAt).toLocaleString('zh-CN') : '从未登录'}</time>
+                  <button onClick={() => setEditing(item)}>
+                    <Pencil size={16} />
+                    编辑
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <AdminListFooter total={visible.length} />
+      </section>
+      {editing && (
+        <UserEditor
+          item={editing}
+          media={media}
+          saving={saving}
+          onClose={() => setEditing(null)}
+          onSave={async (form) => {
+            await onSave(editing, form);
+            setEditing(null);
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 function SettingCheck({ checked, onChange, title, hint, disabled = false }) {
-  return <label className={`settingCheck${disabled ? ' isDisabled' : ''}`}><input type="checkbox" checked={Boolean(checked)} disabled={disabled} onChange={event => onChange?.(event.target.checked)}/><span><b>{title}</b>{hint && <small>{hint}</small>}</span></label>;
+  return (
+    <label className={`settingCheck${disabled ? ' isDisabled' : ''}`}>
+      <input type="checkbox" checked={Boolean(checked)} disabled={disabled} onChange={(event) => onChange?.(event.target.checked)} />
+      <span>
+        <b>{title}</b>
+        {hint && <small>{hint}</small>}
+      </span>
+    </label>
+  );
 }
 
 function SiteSettingsBase({ settings, loading, saving, onSave }) {
   const [form, setForm] = useState(settings || {});
   const [tab, setTab] = useState('basic');
   useEffect(() => setForm(settings || {}), [settings]);
-  const set = (key, value) => setForm(current => ({ ...current, [key]: value }));
-  const save = () => onSave({
-    ...form,
-    postsPerPage: Number(form.postsPerPage || 12),
-    categoryPostsPerPage: Number(form.categoryPostsPerPage || 12),
-    tagPostsPerPage: Number(form.tagPostsPerPage || 12),
-  });
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const save = () =>
+    onSave({
+      ...form,
+      postsPerPage: Number(form.postsPerPage || 12),
+      categoryPostsPerPage: Number(form.categoryPostsPerPage || 12),
+      tagPostsPerPage: Number(form.tagPostsPerPage || 12),
+    });
   const tabs = [
-    ['basic', '基本设置'], ['article', '文章设置'], ['seo', 'SEO 设置'], ['user', '用户设置'],
-    ['attachment', '附件配置'], ['comment', '评论设置'], ['route', '主题路由设置'], ['code', '代码注入'], ['brand', '品牌信息'], ['security', '安全验证'], ['notification', '通知设置'],
+    ['basic', '基本设置'],
+    ['article', '文章设置'],
+    ['seo', 'SEO 设置'],
+    ['user', '用户设置'],
+    ['attachment', '附件配置'],
+    ['comment', '评论设置'],
+    ['route', '主题路由设置'],
+    ['code', '代码注入'],
+    ['brand', '品牌信息'],
+    ['security', '安全验证'],
+    ['notification', '通知设置'],
   ];
   const tabContent = {
-    basic: <div className="settingsSection"><h2>基本设置</h2><p className="settingsLead">配置前台名称、站点简介与本地化信息。</p><div className="settingsGrid"><Field label="站点标题（中文）"><input value={form.siteNameZh || ''} onChange={event => set('siteNameZh', event.target.value)}/></Field><Field label="站点标题（英文）"><input value={form.siteNameEn || ''} onChange={event => set('siteNameEn', event.target.value)}/></Field><Field label="站点副标题（中文）"><textarea rows="3" value={form.siteDescriptionZh || ''} onChange={event => set('siteDescriptionZh', event.target.value)}/></Field><Field label="站点副标题（英文）"><textarea rows="3" value={form.siteDescriptionEn || ''} onChange={event => set('siteDescriptionEn', event.target.value)}/></Field><Field label="默认语言"><select value={form.defaultLocale || 'zh-CN'} onChange={event => set('defaultLocale', event.target.value)}><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></Field><Field label="时区"><input value={form.timezone || 'Asia/Shanghai'} onChange={event => set('timezone', event.target.value)} placeholder="Asia/Shanghai"/></Field></div><div className="settingsChecks"><SettingCheck checked={form.sitemapEnabled} onChange={value => set('sitemapEnabled', value)} title="生成 Sitemap" hint="向搜索引擎提供公开内容索引。"/></div></div>,
-    article: <div className="settingsSection"><h2>文章设置</h2><p className="settingsLead">这些条数会直接影响前台文章列表的分页与加载数量。</p><div className="settingsGrid"><Field label="文章列表显示条数"><input type="number" min="1" max="100" value={form.postsPerPage ?? 12} onChange={event => set('postsPerPage', event.target.value)}/></Field><Field label="分类页显示条数"><input type="number" min="1" max="100" value={form.categoryPostsPerPage ?? 12} onChange={event => set('categoryPostsPerPage', event.target.value)}/></Field><Field label="标签页显示条数"><input type="number" min="1" max="100" value={form.tagPostsPerPage ?? 12} onChange={event => set('tagPostsPerPage', event.target.value)}/></Field><Field label="文章详情页规则"><input value="/archives/{slug}" readOnly/></Field></div><p className="settingsNotice">文章 slug 在创建时生成；修改路由前缀会影响已有外链，因此当前版本固定为兼容 Halo 的归档地址。</p></div>,
-    seo: <div className="settingsSection"><h2>SEO 设置</h2><p className="settingsLead">首页描述、关键词与索引指令会同步到公开端的 HTML 元信息。</p><Field label="站点关键词"><textarea rows="3" value={form.siteKeywords || ''} onChange={event => set('siteKeywords', event.target.value)} placeholder="猫子的世界, AI, Linux, 运维"/></Field><Field label="首页描述"><textarea rows="4" value={form.siteDescriptionZh || ''} onChange={event => set('siteDescriptionZh', event.target.value)}/></Field><div className="settingsChecks"><SettingCheck checked={form.seoNoindex} onChange={value => set('seoNoindex', value)} title="屏蔽搜索引擎收录" hint="在所有前台页面输出 noindex,nofollow 指令。"/></div></div>,
-    user: <div className="settingsSection"><h2>用户设置</h2><p className="settingsLead">注册开关会立即应用到注册接口，不会影响已存在的账号。</p><div className="settingsChecks vertical"><SettingCheck checked={form.registrationEnabled} onChange={value => set('registrationEnabled', value)} title="开放注册" hint="关闭后，前台注册请求会被拒绝。"/><SettingCheck checked title="注册需验证邮箱" hint="这是账号与评论安全策略，当前始终启用。" disabled/><SettingCheck checked title="默认角色：访客" hint="新账号默认仅拥有成员权限。" disabled/></div></div>,
-    attachment: <div className="settingsSection"><h2>附件配置</h2><p className="settingsLead">存储凭据由服务器环境变量管理，不在浏览器中暴露或保存密钥。</p><div className="settingsInfoGrid"><article><b>管理端附件存储</b><span>S3 对象存储</span><small>上传的图片、文件和图库素材使用已配置的存储策略。</small></article><article><b>用户头像存储</b><span>用户头像分组</span><small>头像由用户表关联附件，不会混入普通图库。</small></article><article><b>个人中心附件</b><span>受控附件上传</span><small>文件类型和体积由服务端统一校验。</small></article></div><p className="settingsNotice">如需更换存储策略，请在部署环境修改 S3 配置后重启服务。</p></div>,
-    comment: <div className="settingsSection"><h2>评论设置</h2><p className="settingsLead">评论遵循登录和邮箱验证；审核开关控制新评论是否立刻公开。</p><div className="settingsChecks vertical"><SettingCheck checked={form.commentsEnabled} onChange={value => set('commentsEnabled', value)} title="启用评论" hint="关闭后，前台不会接受新的评论和回复。"/><SettingCheck checked={form.commentsModerationEnabled} onChange={value => set('commentsModerationEnabled', value)} title="新评论审核" hint="启用时新评论进入待审核；关闭后自动公开。"/><SettingCheck checked title="仅允许注册用户评论" hint="为减少垃圾内容，此安全策略始终启用。" disabled/></div></div>,
-    route: <div className="settingsSection"><h2>主题路由设置</h2><p className="settingsLead">当前前台已使用下列稳定路由，以保证导入内容、菜单链接和搜索引擎收录不失效。</p><div className="settingsGrid"><Field label="分类页路由前缀"><input value="categories" readOnly/></Field><Field label="标签页路由前缀"><input value="tags" readOnly/></Field><Field label="归档页路由前缀"><input value="archives" readOnly/></Field><Field label="独立页访问规则"><input value="/{slug}" readOnly/></Field></div><p className="settingsNotice">独立页直接以 slug 访问，例如 /links 和 /photos；不需要 galleries 前缀。</p></div>,
-    code: <div className="settingsSection"><h2>代码注入</h2><p className="settingsLead">为防止 XSS、会话窃取和 CSP 绕过，后台不提供任意 JavaScript 注入。</p><div className="settingsCodeBlocked"><b>受控安全策略</b><p>统计脚本、验证代码或第三方组件应通过部署层的受审查配置接入。这样不会让拥有后台权限的账号直接向所有访客下发脚本。</p></div><Field label="全局 head 标签"><textarea rows="7" value="代码注入已由安全策略禁用" readOnly/></Field><Field label="页脚"><textarea rows="5" value="如需接入可信服务，请在服务器部署配置中添加。" readOnly/></Field></div>,
-    brand: <div className="settingsSection"><h2>品牌信息</h2><p className="settingsLead">设置用于前台、登录页与分享卡片的品牌资源。</p><div className="settingsGrid"><Field label="站点 Logo URL"><input value={form.logoUrl || ''} onChange={event => set('logoUrl', event.target.value)} placeholder="https://…"/></Field><Field label="Favicon URL"><input value={form.faviconUrl || ''} onChange={event => set('faviconUrl', event.target.value)} placeholder="https://…"/></Field><Field label="默认 OG 图片 URL"><input value={form.defaultOgImageUrl || ''} onChange={event => set('defaultOgImageUrl', event.target.value)} placeholder="https://…"/></Field></div><div className="brandPreview">{form.logoUrl ? <img src={form.logoUrl} alt="Logo 预览"/> : <span>站点 Logo 预览</span>}<small>建议使用 HTTPS 图片地址；登录页和后台会使用同一套品牌资源。</small></div></div>,
-    security: <div className="settingsSection"><h2>安全验证</h2><p className="settingsLead">安全敏感项只由部署环境和服务端密钥配置，避免在浏览器中泄漏凭据。</p><div className="settingsInfoGrid"><article><b>登录会话</b><span>HttpOnly + SameSite=Strict</span><small>会话令牌不暴露给前端脚本，并使用服务端签名校验。</small></article><article><b>写入保护</b><span>CSRF 已启用</span><small>所有后台和评论写操作都需要有效的 CSRF 令牌。</small></article><article><b>访问频率</b><span>接口限流已启用</span><small>注册、登录和评论接口受独立的频率控制保护。</small></article></div></div>,
-    commerce: <div className="settingsSection"><h2>商城设置</h2><p className="settingsLead">当前站点未安装商城模块。</p><div className="settingsCodeBlocked"><b>没有已启用的支付或订单功能</b><p>支付密钥、订单与数字商品属于独立受审计模块，不能在普通站点设置中临时开启。</p></div></div>,
-    notification: <div className="settingsSection"><h2>通知设置</h2><p className="settingsLead">邮件投递配置由部署环境管理，后台只使用经过验证的通知通道。</p><div className="settingsInfoGrid"><article><b>邮箱验证</b><span>注册后必须验证</span><small>验证通过前无法登录发表评论或执行受保护操作。</small></article><article><b>评论通知</b><span>服务端通道</span><small>回复和审核类通知不向浏览器暴露 SMTP 凭据。</small></article><article><b>故障通知</b><span>状态节点联动</span><small>状态监控由后台 Worker 运行，可在部署层配置接收方。</small></article></div></div>,
+    basic: (
+      <div className="settingsSection">
+        <h2>基本设置</h2>
+        <p className="settingsLead">配置前台名称、站点简介与本地化信息。</p>
+        <div className="settingsGrid">
+          <Field label="站点标题（中文）">
+            <input value={form.siteNameZh || ''} onChange={(event) => set('siteNameZh', event.target.value)} />
+          </Field>
+          <Field label="站点标题（英文）">
+            <input value={form.siteNameEn || ''} onChange={(event) => set('siteNameEn', event.target.value)} />
+          </Field>
+          <Field label="站点副标题（中文）">
+            <textarea rows="3" value={form.siteDescriptionZh || ''} onChange={(event) => set('siteDescriptionZh', event.target.value)} />
+          </Field>
+          <Field label="站点副标题（英文）">
+            <textarea rows="3" value={form.siteDescriptionEn || ''} onChange={(event) => set('siteDescriptionEn', event.target.value)} />
+          </Field>
+          <Field label="默认语言">
+            <select value={form.defaultLocale || 'zh-CN'} onChange={(event) => set('defaultLocale', event.target.value)}>
+              <option value="zh-CN">简体中文</option>
+              <option value="en-US">English</option>
+            </select>
+          </Field>
+          <Field label="时区">
+            <input
+              value={form.timezone || 'Asia/Shanghai'}
+              onChange={(event) => set('timezone', event.target.value)}
+              placeholder="Asia/Shanghai"
+            />
+          </Field>
+        </div>
+        <div className="settingsChecks">
+          <SettingCheck
+            checked={form.sitemapEnabled}
+            onChange={(value) => set('sitemapEnabled', value)}
+            title="生成 Sitemap"
+            hint="向搜索引擎提供公开内容索引。"
+          />
+        </div>
+      </div>
+    ),
+    article: (
+      <div className="settingsSection">
+        <h2>文章设置</h2>
+        <p className="settingsLead">这些条数会直接影响前台文章列表的分页与加载数量。</p>
+        <div className="settingsGrid">
+          <Field label="文章列表显示条数">
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={form.postsPerPage ?? 12}
+              onChange={(event) => set('postsPerPage', event.target.value)}
+            />
+          </Field>
+          <Field label="分类页显示条数">
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={form.categoryPostsPerPage ?? 12}
+              onChange={(event) => set('categoryPostsPerPage', event.target.value)}
+            />
+          </Field>
+          <Field label="标签页显示条数">
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={form.tagPostsPerPage ?? 12}
+              onChange={(event) => set('tagPostsPerPage', event.target.value)}
+            />
+          </Field>
+          <Field label="文章详情页规则">
+            <input value="/archives/{slug}" readOnly />
+          </Field>
+        </div>
+        <p className="settingsNotice">文章 slug 在创建时生成；修改路由前缀会影响已有外链，因此当前版本固定为兼容 Halo 的归档地址。</p>
+      </div>
+    ),
+    seo: (
+      <div className="settingsSection">
+        <h2>SEO 设置</h2>
+        <p className="settingsLead">首页描述、关键词与索引指令会同步到公开端的 HTML 元信息。</p>
+        <Field label="站点关键词">
+          <textarea
+            rows="3"
+            value={form.siteKeywords || ''}
+            onChange={(event) => set('siteKeywords', event.target.value)}
+            placeholder="猫子的世界, AI, Linux, 运维"
+          />
+        </Field>
+        <Field label="首页描述">
+          <textarea rows="4" value={form.siteDescriptionZh || ''} onChange={(event) => set('siteDescriptionZh', event.target.value)} />
+        </Field>
+        <div className="settingsChecks">
+          <SettingCheck
+            checked={form.seoNoindex}
+            onChange={(value) => set('seoNoindex', value)}
+            title="屏蔽搜索引擎收录"
+            hint="在所有前台页面输出 noindex,nofollow 指令。"
+          />
+        </div>
+      </div>
+    ),
+    user: (
+      <div className="settingsSection">
+        <h2>用户设置</h2>
+        <p className="settingsLead">注册开关会立即应用到注册接口，不会影响已存在的账号。</p>
+        <div className="settingsChecks vertical">
+          <SettingCheck
+            checked={form.registrationEnabled}
+            onChange={(value) => set('registrationEnabled', value)}
+            title="开放注册"
+            hint="关闭后，前台注册请求会被拒绝。"
+          />
+          <SettingCheck checked title="注册需验证邮箱" hint="这是账号与评论安全策略，当前始终启用。" disabled />
+          <SettingCheck checked title="默认角色：访客" hint="新账号默认仅拥有成员权限。" disabled />
+        </div>
+      </div>
+    ),
+    attachment: (
+      <div className="settingsSection">
+        <h2>附件配置</h2>
+        <p className="settingsLead">存储凭据由服务器环境变量管理，不在浏览器中暴露或保存密钥。</p>
+        <div className="settingsInfoGrid">
+          <article>
+            <b>管理端附件存储</b>
+            <span>S3 对象存储</span>
+            <small>上传的图片、文件和图库素材使用已配置的存储策略。</small>
+          </article>
+          <article>
+            <b>用户头像存储</b>
+            <span>用户头像分组</span>
+            <small>头像由用户表关联附件，不会混入普通图库。</small>
+          </article>
+          <article>
+            <b>个人中心附件</b>
+            <span>受控附件上传</span>
+            <small>文件类型和体积由服务端统一校验。</small>
+          </article>
+        </div>
+        <p className="settingsNotice">如需更换存储策略，请在部署环境修改 S3 配置后重启服务。</p>
+      </div>
+    ),
+    comment: (
+      <div className="settingsSection">
+        <h2>评论设置</h2>
+        <p className="settingsLead">评论遵循登录和邮箱验证；审核开关控制新评论是否立刻公开。</p>
+        <div className="settingsChecks vertical">
+          <SettingCheck
+            checked={form.commentsEnabled}
+            onChange={(value) => set('commentsEnabled', value)}
+            title="启用评论"
+            hint="关闭后，前台不会接受新的评论和回复。"
+          />
+          <SettingCheck
+            checked={form.commentsModerationEnabled}
+            onChange={(value) => set('commentsModerationEnabled', value)}
+            title="新评论审核"
+            hint="启用时新评论进入待审核；关闭后自动公开。"
+          />
+          <SettingCheck checked title="仅允许注册用户评论" hint="为减少垃圾内容，此安全策略始终启用。" disabled />
+        </div>
+      </div>
+    ),
+    route: (
+      <div className="settingsSection">
+        <h2>主题路由设置</h2>
+        <p className="settingsLead">当前前台已使用下列稳定路由，以保证导入内容、菜单链接和搜索引擎收录不失效。</p>
+        <div className="settingsGrid">
+          <Field label="分类页路由前缀">
+            <input value="categories" readOnly />
+          </Field>
+          <Field label="标签页路由前缀">
+            <input value="tags" readOnly />
+          </Field>
+          <Field label="归档页路由前缀">
+            <input value="archives" readOnly />
+          </Field>
+          <Field label="独立页访问规则">
+            <input value="/{slug}" readOnly />
+          </Field>
+        </div>
+        <p className="settingsNotice">独立页直接以 slug 访问，例如 /links 和 /photos；不需要 galleries 前缀。</p>
+      </div>
+    ),
+    code: (
+      <div className="settingsSection">
+        <h2>代码注入</h2>
+        <p className="settingsLead">为防止 XSS、会话窃取和 CSP 绕过，后台不提供任意 JavaScript 注入。</p>
+        <div className="settingsCodeBlocked">
+          <b>受控安全策略</b>
+          <p>统计脚本、验证代码或第三方组件应通过部署层的受审查配置接入。这样不会让拥有后台权限的账号直接向所有访客下发脚本。</p>
+        </div>
+        <Field label="全局 head 标签">
+          <textarea rows="7" value="代码注入已由安全策略禁用" readOnly />
+        </Field>
+        <Field label="页脚">
+          <textarea rows="5" value="如需接入可信服务，请在服务器部署配置中添加。" readOnly />
+        </Field>
+      </div>
+    ),
+    brand: (
+      <div className="settingsSection">
+        <h2>品牌信息</h2>
+        <p className="settingsLead">设置用于前台、登录页与分享卡片的品牌资源。</p>
+        <div className="settingsGrid">
+          <Field label="站点 Logo URL">
+            <input value={form.logoUrl || ''} onChange={(event) => set('logoUrl', event.target.value)} placeholder="https://…" />
+          </Field>
+          <Field label="Favicon URL">
+            <input value={form.faviconUrl || ''} onChange={(event) => set('faviconUrl', event.target.value)} placeholder="https://…" />
+          </Field>
+          <Field label="默认 OG 图片 URL">
+            <input
+              value={form.defaultOgImageUrl || ''}
+              onChange={(event) => set('defaultOgImageUrl', event.target.value)}
+              placeholder="https://…"
+            />
+          </Field>
+        </div>
+        <div className="brandPreview">
+          {form.logoUrl ? <img src={form.logoUrl} alt="Logo 预览" /> : <span>站点 Logo 预览</span>}
+          <small>建议使用 HTTPS 图片地址；登录页和后台会使用同一套品牌资源。</small>
+        </div>
+      </div>
+    ),
+    security: (
+      <div className="settingsSection">
+        <h2>安全验证</h2>
+        <p className="settingsLead">安全敏感项只由部署环境和服务端密钥配置，避免在浏览器中泄漏凭据。</p>
+        <div className="settingsInfoGrid">
+          <article>
+            <b>登录会话</b>
+            <span>HttpOnly + SameSite=Strict</span>
+            <small>会话令牌不暴露给前端脚本，并使用服务端签名校验。</small>
+          </article>
+          <article>
+            <b>写入保护</b>
+            <span>CSRF 已启用</span>
+            <small>所有后台和评论写操作都需要有效的 CSRF 令牌。</small>
+          </article>
+          <article>
+            <b>访问频率</b>
+            <span>接口限流已启用</span>
+            <small>注册、登录和评论接口受独立的频率控制保护。</small>
+          </article>
+        </div>
+      </div>
+    ),
+    notification: (
+      <div className="settingsSection">
+        <h2>通知设置</h2>
+        <p className="settingsLead">邮件投递配置由部署环境管理，后台只使用经过验证的通知通道。</p>
+        <div className="settingsInfoGrid">
+          <article>
+            <b>邮箱验证</b>
+            <span>注册后必须验证</span>
+            <small>验证通过前无法登录发表评论或执行受保护操作。</small>
+          </article>
+          <article>
+            <b>评论通知</b>
+            <span>服务端通道</span>
+            <small>回复和审核类通知不向浏览器暴露 SMTP 凭据。</small>
+          </article>
+          <article>
+            <b>故障通知</b>
+            <span>状态节点联动</span>
+            <small>状态监控由后台 Worker 运行，可在部署层配置接收方。</small>
+          </article>
+        </div>
+      </div>
+    ),
   };
-  return <><div className="studioHeading settingsHeading"><div><p>站点配置</p><h1>Settings</h1></div><button className="primaryButton" disabled={loading || saving} onClick={save}>{saving ? '保存中…' : '保存设置'}</button></div><section className="studioPanel settingsPanel">{loading ? <Empty>正在读取站点设置…</Empty> : <><nav className="settingsTabs" aria-label="站点设置分组">{tabs.map(([key, label]) => <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>{label}</button>)}</nav><div className="settingsBody">{tabContent[tab]}<div className="settingsSave"><button className="primaryButton" disabled={saving} onClick={save}>{saving ? '保存中…' : '保存'}</button></div></div></>}</section></>;
+  return (
+    <>
+      <div className="studioHeading settingsHeading">
+        <div>
+          <p>站点配置</p>
+          <h1>Settings</h1>
+        </div>
+        <button className="primaryButton" disabled={loading || saving} onClick={save}>
+          {saving ? '保存中…' : '保存设置'}
+        </button>
+      </div>
+      <section className="studioPanel settingsPanel">
+        {loading ? (
+          <Empty>正在读取站点设置…</Empty>
+        ) : (
+          <>
+            <nav className="settingsTabs" aria-label="站点设置分组">
+              {tabs.map(([key, label]) => (
+                <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
+                  {label}
+                </button>
+              ))}
+            </nav>
+            <div className="settingsBody">
+              {tabContent[tab]}
+              <div className="settingsSave">
+                <button className="primaryButton" disabled={saving} onClick={save}>
+                  {saving ? '保存中…' : '保存'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+    </>
+  );
 }
 
-function NavigationEditor({ item, saving, onClose, onSave }) { const [form, setForm] = useState(item || blankNavigation); const set = (key, value) => setForm(current => ({ ...current, [key]: value })); return <Modal title={item?.id ? '编辑菜单项' : '新增菜单项'} onClose={onClose} actions={<><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !form.label || !form.url} onClick={() => onSave(form)}>{saving ? '保存中…' : '保存菜单'}</button></>}><div className="editorGrid"><Field label="菜单名称"><input autoFocus value={form.label} onChange={event => set('label', event.target.value)}/></Field><Field label="链接地址"><input value={form.url} onChange={event => set('url', event.target.value)} placeholder="/archives 或 https://…"/></Field></div><div className="editorGrid"><Field label="语言"><select value={form.locale} onChange={event => set('locale', event.target.value)}><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></Field><Field label="位置"><select value={form.location} onChange={event => set('location', event.target.value)}><option value="header">顶部导航</option><option value="footer">页脚导航</option></select></Field><Field label="图标键"><input value={form.iconKey || ''} onChange={event => set('iconKey', event.target.value)} placeholder="可选，例如 home"/></Field><Field label="排序"><input type="number" min="0" value={form.sortOrder || 0} onChange={event => set('sortOrder', Number(event.target.value))}/></Field></div><label className="checkField"><input type="checkbox" checked={Boolean(form.openNewTab)} onChange={event => set('openNewTab', event.target.checked)}/>在新窗口打开</label></Modal>; }
-function StatusNodeEditor({ item, saving, onClose, onSave }) { const [form, setForm] = useState(item || blankStatusNode); const set = (key, value) => setForm(current => ({ ...current, [key]: value })); return <Modal title={item?.id ? '编辑状态节点' : '新增状态节点'} onClose={onClose} actions={<><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !form.code || !form.displayNameZh || !form.endpoint} onClick={() => onSave(form)}>{saving ? '保存中…' : '保存节点'}</button></>}><div className="editorGrid"><Field label="节点代码"><input autoFocus value={form.code} onChange={event => set('code', slugify(event.target.value))} placeholder="tokyo"/></Field><Field label="中文名称"><input value={form.displayNameZh} onChange={event => set('displayNameZh', event.target.value)} placeholder="Tokyo"/></Field><Field label="英文名称"><input value={form.displayNameEn || ''} onChange={event => set('displayNameEn', event.target.value)}/></Field><Field label="区域"><input value={form.region || ''} onChange={event => set('region', event.target.value)}/></Field></div><Field label="探测地址"><input value={form.endpoint} onChange={event => set('endpoint', event.target.value)} placeholder="https://example.com/health"/></Field><div className="editorGrid"><Field label="探测类型"><select value={form.checkType} onChange={event => set('checkType', event.target.value)}><option value="http">HTTP</option><option value="tcp">TCP</option></select></Field><Field label="HTTP 方法"><select value={form.httpMethod} onChange={event => set('httpMethod', event.target.value)}><option value="HEAD">HEAD</option><option value="GET">GET</option></select></Field><Field label="预期状态码"><input type="number" value={form.expectedStatus} onChange={event => set('expectedStatus', Number(event.target.value))}/></Field><Field label="超时毫秒"><input type="number" value={form.timeoutMs} onChange={event => set('timeoutMs', Number(event.target.value))}/></Field><Field label="探测间隔（秒）"><input type="number" value={form.intervalSeconds} onChange={event => set('intervalSeconds', Number(event.target.value))}/></Field><Field label="排序"><input type="number" min="0" value={form.sortOrder || 0} onChange={event => set('sortOrder', Number(event.target.value))}/></Field></div></Modal>; }
-function SiteSettingsView({ navigation, statusNodes, saving, onSaveNavigation, onDeleteNavigation, onSaveStatusNode, onDeleteStatusNode, ...props }) { const [editing, setEditing] = useState(null); const [removing, setRemoving] = useState(null); const remove = async () => { if (!removing) return; await (removing.kind === 'navigation' ? onDeleteNavigation(removing.item) : onDeleteStatusNode(removing.item)); setRemoving(null); }; return <><SiteSettingsBase {...props}/><section className="studioPanel configManager"><header><div><h2>菜单管理</h2><p>控制顶部或页脚导航的名称、地址、图标和排序。</p></div><button className="secondaryButton" onClick={() => setEditing({ kind: 'navigation' })}><Plus size={15}/>新增菜单</button></header>{navigation.length ? <div className="studioPosts">{navigation.map(item => <article key={item.id}><div><b>{item.label}</b><span>{item.location === 'header' ? '顶部' : '页脚'} · {item.locale} · {item.url}</span></div><div className="rowActions"><button onClick={() => setEditing({ kind: 'navigation', item })}><Pencil size={16}/>编辑</button><button className="dangerIcon" onClick={() => setRemoving({ kind: 'navigation', item })}><Trash2 size={16}/></button></div></article>)}</div> : <Empty>暂时没有自定义菜单。</Empty>}</section><section className="studioPanel configManager"><header><div><h2>站点状态管理</h2><p>配置公开展示的节点和后台 Worker 使用的探测参数。</p></div><button className="secondaryButton" onClick={() => setEditing({ kind: 'status' })}><Plus size={15}/>新增节点</button></header>{statusNodes.length ? <div className="studioPosts">{statusNodes.map(item => <article key={item.id}><div><b>{item.displayNameZh}</b><span>{item.lastStatus || 'unknown'} · {item.lastLatencyMs == null ? '待检测' : `${item.lastLatencyMs} ms`} · {item.endpoint}</span></div><div className="rowActions"><button onClick={() => setEditing({ kind: 'status', item })}><Pencil size={16}/>编辑</button><button className="dangerIcon" onClick={() => setRemoving({ kind: 'status', item })}><Trash2 size={16}/></button></div></article>)}</div> : <Empty>暂时没有状态节点。</Empty>}</section>{editing?.kind === 'navigation' && <NavigationEditor item={editing.item} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSaveNavigation(form, editing.item); setEditing(null); }}/>} {editing?.kind === 'status' && <StatusNodeEditor item={editing.item} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSaveStatusNode(form, editing.item); setEditing(null); }}/>} {removing && <Modal title="确认删除" onClose={() => setRemoving(null)} actions={<><button className="secondaryButton" onClick={() => setRemoving(null)}>取消</button><button className="dangerButton" disabled={saving} onClick={remove}>{saving ? '删除中…' : '确认删除'}</button></>}><p>将软删除「{removing.item.label || removing.item.displayNameZh}」。</p></Modal>}</>; }
-
-function NavigationManager({ navigation, saving, onSave, onDelete }) {
-  const [editing, setEditing] = useState(null);
-  const [removing, setRemoving] = useState(null);
-  const remove = async () => { if (!removing) return; await onDelete(removing); setRemoving(null); };
-  return <><div className="studioHeading"><div><p>站点结构</p><h1>菜单管理</h1></div><button className="primaryButton" onClick={() => setEditing({})}><Plus size={17}/>新增菜单</button></div><section className="studioPanel configManager"><header><div><h2>导航菜单</h2><p>分别维护顶部和页脚菜单，支持中文、英文、排序及新窗口打开。</p></div></header>{navigation.length ? <div className="studioPosts">{navigation.map(item => <article key={item.id}><div><b>{item.label}</b><span>{item.location === 'header' ? '顶部导航' : '页脚导航'} · {item.locale} · {item.url}</span></div><div className="rowActions"><button onClick={() => setEditing(item)}><Pencil size={16}/>编辑</button><button className="dangerIcon" onClick={() => setRemoving(item)}><Trash2 size={16}/></button></div></article>)}</div> : <Empty>暂时没有菜单项，请新增一个导航。</Empty>}</section>{editing && <NavigationEditor item={editing.id ? editing : null} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSave(form, editing.id ? editing : null); setEditing(null); }}/>} {removing && <Modal title="确认删除菜单" onClose={() => setRemoving(null)} actions={<><button className="secondaryButton" onClick={() => setRemoving(null)}>取消</button><button className="dangerButton" disabled={saving} onClick={remove}>{saving ? '删除中…' : '确认删除'}</button></>}><p>将软删除「{removing.label}」，它不会再出现在前台导航中。</p></Modal>}</>;
+function StatusNodeEditor({ item, saving, onClose, onSave }) {
+  const [form, setForm] = useState(item || blankStatusNode);
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  return (
+    <Modal
+      title={item?.id ? '编辑状态节点' : '新增状态节点'}
+      onClose={onClose}
+      actions={
+        <>
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button
+            className="primaryButton"
+            disabled={saving || !form.code || !form.displayNameZh || !form.endpoint}
+            onClick={() => onSave(form)}
+          >
+            {saving ? '保存中…' : '保存节点'}
+          </button>
+        </>
+      }
+    >
+      <div className="editorGrid">
+        <Field label="节点代码">
+          <input autoFocus value={form.code} onChange={(event) => set('code', slugify(event.target.value))} placeholder="tokyo" />
+        </Field>
+        <Field label="中文名称">
+          <input value={form.displayNameZh} onChange={(event) => set('displayNameZh', event.target.value)} placeholder="Tokyo" />
+        </Field>
+        <Field label="英文名称">
+          <input value={form.displayNameEn || ''} onChange={(event) => set('displayNameEn', event.target.value)} />
+        </Field>
+        <Field label="区域">
+          <input value={form.region || ''} onChange={(event) => set('region', event.target.value)} />
+        </Field>
+      </div>
+      <Field label="探测地址">
+        <input value={form.endpoint} onChange={(event) => set('endpoint', event.target.value)} placeholder="https://example.com/health" />
+      </Field>
+      <div className="editorGrid">
+        <Field label="探测类型">
+          <select value={form.checkType} onChange={(event) => set('checkType', event.target.value)}>
+            <option value="http">HTTP</option>
+            <option value="tcp">TCP</option>
+          </select>
+        </Field>
+        <Field label="HTTP 方法">
+          <select value={form.httpMethod} onChange={(event) => set('httpMethod', event.target.value)}>
+            <option value="HEAD">HEAD</option>
+            <option value="GET">GET</option>
+          </select>
+        </Field>
+        <Field label="预期状态码">
+          <input type="number" value={form.expectedStatus} onChange={(event) => set('expectedStatus', Number(event.target.value))} />
+        </Field>
+        <Field label="超时毫秒">
+          <input type="number" value={form.timeoutMs} onChange={(event) => set('timeoutMs', Number(event.target.value))} />
+        </Field>
+        <Field label="探测间隔（秒）">
+          <input type="number" value={form.intervalSeconds} onChange={(event) => set('intervalSeconds', Number(event.target.value))} />
+        </Field>
+        <Field label="排序">
+          <input type="number" min="0" value={form.sortOrder || 0} onChange={(event) => set('sortOrder', Number(event.target.value))} />
+        </Field>
+      </div>
+    </Modal>
+  );
 }
-
 function MenuGroupEditor({ item, saving, onClose, onSave }) {
   const [form, setForm] = useState(item || blankNavigationMenu);
-  const set = (key, value) => setForm(current => ({ ...current, [key]: value }));
-  return <Modal title="新建菜单" onClose={onClose} actions={<><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !form.name || !form.menuKey} onClick={() => onSave(form)}>{saving ? '保存中…' : '创建菜单'}</button></>}><Field label="菜单名称 *"><input autoFocus value={form.name} onChange={event => set('name', event.target.value)} placeholder="例如：主菜单"/></Field><div className="editorGrid"><Field label="菜单机器名 *"><input value={form.menuKey} onChange={event => set('menuKey', slugify(event.target.value))} placeholder="primary"/></Field><Field label="显示位置"><select value={form.location} onChange={event => set('location', event.target.value)}><option value="header">顶部导航</option><option value="footer">页脚导航</option></select></Field><Field label="语言"><select value={form.locale} onChange={event => set('locale', event.target.value)}><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></Field><Field label="排序"><input type="number" min="0" value={form.sortOrder || 0} onChange={event => set('sortOrder', Number(event.target.value))}/></Field></div></Modal>;
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  return (
+    <Modal
+      title="新建菜单"
+      onClose={onClose}
+      actions={
+        <>
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button className="primaryButton" disabled={saving || !form.name || !form.menuKey} onClick={() => onSave(form)}>
+            {saving ? '保存中…' : '创建菜单'}
+          </button>
+        </>
+      }
+    >
+      <Field label="菜单名称 *">
+        <input autoFocus value={form.name} onChange={(event) => set('name', event.target.value)} placeholder="例如：主菜单" />
+      </Field>
+      <div className="editorGrid">
+        <Field label="菜单机器名 *">
+          <input value={form.menuKey} onChange={(event) => set('menuKey', slugify(event.target.value))} placeholder="primary" />
+        </Field>
+        <Field label="显示位置">
+          <select value={form.location} onChange={(event) => set('location', event.target.value)}>
+            <option value="header">顶部导航</option>
+            <option value="footer">页脚导航</option>
+          </select>
+        </Field>
+        <Field label="语言">
+          <select value={form.locale} onChange={(event) => set('locale', event.target.value)}>
+            <option value="zh-CN">简体中文</option>
+            <option value="en-US">English</option>
+          </select>
+        </Field>
+        <Field label="排序">
+          <input type="number" min="0" value={form.sortOrder || 0} onChange={(event) => set('sortOrder', Number(event.target.value))} />
+        </Field>
+      </div>
+    </Modal>
+  );
 }
 
 function MenuItemEditor({ item, menus, navigation, posts, pages, categories, tags, saving, onClose, onSave }) {
-  const [form, setForm] = useState({ ...blankNavigation, ...(item || {}), targetIds: (item?.targetIds || []).slice(0, 1), menuId: item?.menuId || menus[0]?.id || '' });
-  const set = (key, value) => setForm(current => ({ ...current, [key]: value }));
-  const selectedMenu = menus.find(menu => menu.id === form.menuId);
-  const targetOptions = form.targetType === 'post' ? posts : form.targetType === 'page' ? pages : form.targetType === 'categories' ? categories : tags;
-  const targetPath = target => !target.slug ? '' : form.targetType === 'categories' ? `/categories/${target.slug}` : form.targetType === 'tags' ? `/tags/${target.slug}` : form.targetType === 'post' ? `/archives/${target.slug}` : `/${target.slug}`;
-  const updateTargetType = targetType => setForm(current => ({ ...current, targetType, targetIds: [], url: targetType === 'custom' ? current.url || '/' : '' }));
-  const updateTargets = event => set('targetIds', event.target.value ? [event.target.value] : []);
+  const [form, setForm] = useState({
+    ...blankNavigation,
+    ...(item || {}),
+    targetIds: (item?.targetIds || []).slice(0, 1),
+    menuId: item?.menuId || menus[0]?.id || '',
+  });
+  const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const selectedMenu = menus.find((menu) => menu.id === form.menuId);
+  const targetOptions =
+    form.targetType === 'post' ? posts : form.targetType === 'page' ? pages : form.targetType === 'categories' ? categories : tags;
+  const targetPath = (target) =>
+    !target.slug
+      ? ''
+      : form.targetType === 'categories'
+        ? `/categories/${target.slug}`
+        : form.targetType === 'tags'
+          ? `/tags/${target.slug}`
+          : form.targetType === 'post'
+            ? `/archives/${target.slug}`
+            : `/${target.slug}`;
+  const updateTargetType = (targetType) =>
+    setForm((current) => ({ ...current, targetType, targetIds: [], url: targetType === 'custom' ? current.url || '/' : '' }));
+  const updateTargets = (event) => set('targetIds', event.target.value ? [event.target.value] : []);
   const valid = form.label.trim() && form.menuId && (form.targetType === 'custom' ? form.url.trim() : form.targetIds.length > 0);
-  const parentItems = navigation.filter(entry => entry.menuId === form.menuId && entry.locale === form.locale && entry.id !== item?.id);
-  return <Modal title={item?.id ? '编辑菜单项' : '新建菜单项'} onClose={onClose} actions={<><button className="secondaryButton" onClick={onClose}>取消</button><button className="primaryButton" disabled={saving || !valid} onClick={() => onSave({ ...form, parentId: form.parentId || null })}>{saving ? '保存中…' : '保存菜单项'}</button></>}><div className="menuItemEditor"><Field label="所属菜单 *"><select value={form.menuId} onChange={event => { const menu = menus.find(row => row.id === event.target.value); setForm(current => ({ ...current, menuId: event.target.value, locale: menu?.locale || current.locale, location: menu?.location || current.location, parentId: null })); }}><option value="">请选择菜单</option>{menus.map(menu => <option key={menu.id} value={menu.id}>{menu.name} · {menu.locale}</option>)}</select></Field><Field label="父级菜单"><select value={form.parentId || ''} onChange={event => set('parentId', event.target.value || null)}><option value="">无（一级菜单）</option>{parentItems.map(entry => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select></Field><Field label="类型 *"><select value={form.targetType} onChange={event => updateTargetType(event.target.value)}><option value="custom">自定义链接</option><option value="post">指定文章页面</option><option value="page">指定独立页</option><option value="categories">指定分类</option><option value="tags">指定标签</option></select></Field><Field label="显示名称 *"><input autoFocus value={form.label} onChange={event => set('label', event.target.value)} placeholder="导航中显示的名称"/></Field>{form.targetType === 'custom' ? <Field label="链接地址 *"><input value={form.url || ''} onChange={event => set('url', event.target.value)} placeholder="/posts 或 https://…"/></Field> : <Field label={form.targetType === 'post' ? '文章 *' : form.targetType === 'page' ? '独立页 *' : form.targetType === 'categories' ? '分类 *' : '标签 *'}><select value={form.targetIds?.[0] || ''} onChange={updateTargets}><option value="">请选择</option>{targetOptions.filter(target => target.locale === form.locale).map(target => <option key={target.id} value={target.id}>{target.title || target.name} {targetPath(target) ? `· ${targetPath(target)}` : ''}</option>)}</select></Field>}<div className="editorGrid"><Field label="图标键"><input value={form.iconKey || ''} onChange={event => set('iconKey', event.target.value)} placeholder="可选，例如 home"/></Field><Field label="排序"><input type="number" min="0" value={form.sortOrder || 0} onChange={event => set('sortOrder', Number(event.target.value))}/></Field></div><label className="checkField"><input type="checkbox" checked={Boolean(form.openNewTab)} onChange={event => set('openNewTab', event.target.checked)}/>在新窗口打开</label>{selectedMenu && <p className="editorHint">将保存到「{selectedMenu.name}」。菜单支持任意层级；系统会阻止循环父子关系。</p>}</div></Modal>;
+  const parentItems = navigation.filter((entry) => entry.menuId === form.menuId && entry.locale === form.locale && entry.id !== item?.id);
+  return (
+    <Modal
+      title={item?.id ? '编辑菜单项' : '新建菜单项'}
+      onClose={onClose}
+      actions={
+        <>
+          <button className="secondaryButton" onClick={onClose}>
+            取消
+          </button>
+          <button
+            className="primaryButton"
+            disabled={saving || !valid}
+            onClick={() => onSave({ ...form, parentId: form.parentId || null })}
+          >
+            {saving ? '保存中…' : '保存菜单项'}
+          </button>
+        </>
+      }
+    >
+      <div className="menuItemEditor">
+        <Field label="所属菜单 *">
+          <select
+            value={form.menuId}
+            onChange={(event) => {
+              const menu = menus.find((row) => row.id === event.target.value);
+              setForm((current) => ({
+                ...current,
+                menuId: event.target.value,
+                locale: menu?.locale || current.locale,
+                location: menu?.location || current.location,
+                parentId: null,
+              }));
+            }}
+          >
+            <option value="">请选择菜单</option>
+            {menus.map((menu) => (
+              <option key={menu.id} value={menu.id}>
+                {menu.name} · {menu.locale}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="父级菜单">
+          <select value={form.parentId || ''} onChange={(event) => set('parentId', event.target.value || null)}>
+            <option value="">无（一级菜单）</option>
+            {parentItems.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="类型 *">
+          <select value={form.targetType} onChange={(event) => updateTargetType(event.target.value)}>
+            <option value="custom">自定义链接</option>
+            <option value="post">指定文章页面</option>
+            <option value="page">指定独立页</option>
+            <option value="categories">指定分类</option>
+            <option value="tags">指定标签</option>
+          </select>
+        </Field>
+        <Field label="显示名称 *">
+          <input autoFocus value={form.label} onChange={(event) => set('label', event.target.value)} placeholder="导航中显示的名称" />
+        </Field>
+        {form.targetType === 'custom' ? (
+          <Field label="链接地址 *">
+            <input value={form.url || ''} onChange={(event) => set('url', event.target.value)} placeholder="/posts 或 https://…" />
+          </Field>
+        ) : (
+          <Field
+            label={
+              form.targetType === 'post'
+                ? '文章 *'
+                : form.targetType === 'page'
+                  ? '独立页 *'
+                  : form.targetType === 'categories'
+                    ? '分类 *'
+                    : '标签 *'
+            }
+          >
+            <select value={form.targetIds?.[0] || ''} onChange={updateTargets}>
+              <option value="">请选择</option>
+              {targetOptions
+                .filter((target) => target.locale === form.locale)
+                .map((target) => (
+                  <option key={target.id} value={target.id}>
+                    {target.title || target.name} {targetPath(target) ? `· ${targetPath(target)}` : ''}
+                  </option>
+                ))}
+            </select>
+          </Field>
+        )}
+        <div className="editorGrid">
+          <Field label="图标键">
+            <input value={form.iconKey || ''} onChange={(event) => set('iconKey', event.target.value)} placeholder="可选，例如 home" />
+          </Field>
+          <Field label="排序">
+            <input type="number" min="0" value={form.sortOrder || 0} onChange={(event) => set('sortOrder', Number(event.target.value))} />
+          </Field>
+        </div>
+        <label className="checkField">
+          <input type="checkbox" checked={Boolean(form.openNewTab)} onChange={(event) => set('openNewTab', event.target.checked)} />
+          在新窗口打开
+        </label>
+        {selectedMenu && <p className="editorHint">将保存到「{selectedMenu.name}」。菜单支持任意层级；系统会阻止循环父子关系。</p>}
+      </div>
+    </Modal>
+  );
 }
 
 function MenuTree({ items, parentId = null, depth = 0, onEdit, onDelete }) {
-  return <>{items.filter(item => (item.parentId || null) === parentId).map(item => <React.Fragment key={item.id}><article className="menuTreeRow" style={{ paddingLeft: `${20 + depth * 27}px` }}><div><b>{item.label}</b><span><em>{({ custom: '自定义', post: '文章', page: '独立页', categories: '分类', tags: '标签' })[item.targetType] || '自定义'}</em>{item.url}</span></div><div className="rowActions"><button onClick={() => onEdit(item)}><Pencil size={16}/>编辑</button><button className="dangerIcon" onClick={() => onDelete(item)}><Trash2 size={16}/></button></div></article><MenuTree items={items} parentId={item.id} depth={depth + 1} onEdit={onEdit} onDelete={onDelete}/></React.Fragment>)}</>;
+  return (
+    <>
+      {items
+        .filter((item) => (item.parentId || null) === parentId)
+        .map((item) => (
+          <React.Fragment key={item.id}>
+            <article className="menuTreeRow" style={{ paddingLeft: `${20 + depth * 27}px` }}>
+              <div>
+                <b>{item.label}</b>
+                <span>
+                  <em>
+                    {{ custom: '自定义', post: '文章', page: '独立页', categories: '分类', tags: '标签' }[item.targetType] || '自定义'}
+                  </em>
+                  {item.url}
+                </span>
+              </div>
+              <div className="rowActions">
+                <button onClick={() => onEdit(item)}>
+                  <Pencil size={16} />
+                  编辑
+                </button>
+                <button className="dangerIcon" onClick={() => onDelete(item)}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </article>
+            <MenuTree items={items} parentId={item.id} depth={depth + 1} onEdit={onEdit} onDelete={onDelete} />
+          </React.Fragment>
+        ))}
+    </>
+  );
 }
 
 function MenuManager({ navigation, menus, posts, pages, categories, tags, saving, onSave, onDelete, onSaveMenu, onDeleteMenu }) {
-  const [activeMenuId, setActiveMenuId] = useState(''); const [editing, setEditing] = useState(null); const [addingMenu, setAddingMenu] = useState(false); const [removing, setRemoving] = useState(null);
-  useEffect(() => { if (!menus.some(menu => menu.id === activeMenuId)) setActiveMenuId(menus[0]?.id || ''); }, [menus, activeMenuId]);
-  const activeMenu = menus.find(menu => menu.id === activeMenuId); const items = navigation.filter(item => item.menuId === activeMenuId);
-  const remove = async () => { if (!removing) return; if (removing.kind === 'menu') await onDeleteMenu(removing.item); else await onDelete(removing.item); setRemoving(null); };
-  return <><div className="studioHeading"><div><p>站点结构</p><h1>菜单管理</h1></div><button className="primaryButton" onClick={() => setAddingMenu(true)}><Plus size={17}/>新建菜单</button></div><section className="menuManager"><aside className="menuCollections"><h2>菜单</h2>{menus.map(menu => <button className={menu.id === activeMenuId ? 'active' : ''} key={menu.id} onClick={() => setActiveMenuId(menu.id)}><b>{menu.name}</b><small>{navigation.filter(item => item.menuId === menu.id).length} 项 · {menu.location === 'header' ? '顶部' : '页脚'}</small><span onClick={event => { event.stopPropagation(); setRemoving({ kind: 'menu', item: menu }); }} aria-label={`删除 ${menu.name}`}>•••</span></button>)}<button className="newMenuCollection" onClick={() => setAddingMenu(true)}><Plus size={15}/>新建菜单</button></aside><section className="studioPanel menuCanvas"><header><div><h2>{activeMenu?.name || '选择一个菜单'}</h2><p>{activeMenu ? `${activeMenu.locale} · ${activeMenu.location === 'header' ? '顶部导航' : '页脚导航'} · 支持无限子菜单` : '请先新建菜单。'}</p></div>{activeMenu && <button className="secondaryButton" onClick={() => setEditing({ menuId: activeMenu.id, locale: activeMenu.locale, location: activeMenu.location })}><Plus size={15}/>新建菜单项</button>}</header>{activeMenu ? items.length ? <div className="menuTree"><MenuTree items={items} onEdit={setEditing} onDelete={item => setRemoving({ kind: 'item', item })}/></div> : <Empty>这个菜单还没有菜单项。</Empty> : <Empty>暂无菜单，请先创建一个菜单。</Empty>}</section></section>{addingMenu && <MenuGroupEditor saving={saving} onClose={() => setAddingMenu(false)} onSave={async form => { await onSaveMenu(form); setAddingMenu(false); }}/>} {editing && <MenuItemEditor item={editing.id ? editing : null} menus={menus} navigation={navigation} posts={posts} pages={pages} categories={categories} tags={tags} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSave(form, editing.id ? editing : null); setEditing(null); }}/>} {removing && <Modal title={removing.kind === 'menu' ? '删除菜单' : '删除菜单项'} onClose={() => setRemoving(null)} actions={<><button className="secondaryButton" onClick={() => setRemoving(null)}>取消</button><button className="dangerButton" disabled={saving} onClick={remove}>{saving ? '删除中…' : '确认删除'}</button></>}><p>{removing.kind === 'menu' ? `删除「${removing.item.name}」会同时隐藏其全部菜单项。` : `将软删除「${removing.item.label}」。`}</p></Modal>}</>;
+  const [activeMenuId, setActiveMenuId] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [addingMenu, setAddingMenu] = useState(false);
+  const [removing, setRemoving] = useState(null);
+  useEffect(() => {
+    if (!menus.some((menu) => menu.id === activeMenuId)) setActiveMenuId(menus[0]?.id || '');
+  }, [menus, activeMenuId]);
+  const activeMenu = menus.find((menu) => menu.id === activeMenuId);
+  const items = navigation.filter((item) => item.menuId === activeMenuId);
+  const remove = async () => {
+    if (!removing) return;
+    if (removing.kind === 'menu') await onDeleteMenu(removing.item);
+    else await onDelete(removing.item);
+    setRemoving(null);
+  };
+  return (
+    <>
+      <div className="studioHeading">
+        <div>
+          <p>站点结构</p>
+          <h1>菜单管理</h1>
+        </div>
+        <button className="primaryButton" onClick={() => setAddingMenu(true)}>
+          <Plus size={17} />
+          新建菜单
+        </button>
+      </div>
+      <section className="menuManager">
+        <aside className="menuCollections">
+          <h2>菜单</h2>
+          {menus.map((menu) => (
+            <button className={menu.id === activeMenuId ? 'active' : ''} key={menu.id} onClick={() => setActiveMenuId(menu.id)}>
+              <b>{menu.name}</b>
+              <small>
+                {navigation.filter((item) => item.menuId === menu.id).length} 项 · {menu.location === 'header' ? '顶部' : '页脚'}
+              </small>
+              <span
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setRemoving({ kind: 'menu', item: menu });
+                }}
+                aria-label={`删除 ${menu.name}`}
+              >
+                •••
+              </span>
+            </button>
+          ))}
+          <button className="newMenuCollection" onClick={() => setAddingMenu(true)}>
+            <Plus size={15} />
+            新建菜单
+          </button>
+        </aside>
+        <section className="studioPanel menuCanvas">
+          <header>
+            <div>
+              <h2>{activeMenu?.name || '选择一个菜单'}</h2>
+              <p>
+                {activeMenu
+                  ? `${activeMenu.locale} · ${activeMenu.location === 'header' ? '顶部导航' : '页脚导航'} · 支持无限子菜单`
+                  : '请先新建菜单。'}
+              </p>
+            </div>
+            {activeMenu && (
+              <button
+                className="secondaryButton"
+                onClick={() => setEditing({ menuId: activeMenu.id, locale: activeMenu.locale, location: activeMenu.location })}
+              >
+                <Plus size={15} />
+                新建菜单项
+              </button>
+            )}
+          </header>
+          {activeMenu ? (
+            items.length ? (
+              <div className="menuTree">
+                <MenuTree items={items} onEdit={setEditing} onDelete={(item) => setRemoving({ kind: 'item', item })} />
+              </div>
+            ) : (
+              <Empty>这个菜单还没有菜单项。</Empty>
+            )
+          ) : (
+            <Empty>暂无菜单，请先创建一个菜单。</Empty>
+          )}
+        </section>
+      </section>
+      {addingMenu && (
+        <MenuGroupEditor
+          saving={saving}
+          onClose={() => setAddingMenu(false)}
+          onSave={async (form) => {
+            await onSaveMenu(form);
+            setAddingMenu(false);
+          }}
+        />
+      )}{' '}
+      {editing && (
+        <MenuItemEditor
+          item={editing.id ? editing : null}
+          menus={menus}
+          navigation={navigation}
+          posts={posts}
+          pages={pages}
+          categories={categories}
+          tags={tags}
+          saving={saving}
+          onClose={() => setEditing(null)}
+          onSave={async (form) => {
+            await onSave(form, editing.id ? editing : null);
+            setEditing(null);
+          }}
+        />
+      )}{' '}
+      {removing && (
+        <Modal
+          title={removing.kind === 'menu' ? '删除菜单' : '删除菜单项'}
+          onClose={() => setRemoving(null)}
+          actions={
+            <>
+              <button className="secondaryButton" onClick={() => setRemoving(null)}>
+                取消
+              </button>
+              <button className="dangerButton" disabled={saving} onClick={remove}>
+                {saving ? '删除中…' : '确认删除'}
+              </button>
+            </>
+          }
+        >
+          <p>
+            {removing.kind === 'menu' ? `删除「${removing.item.name}」会同时隐藏其全部菜单项。` : `将软删除「${removing.item.label}」。`}
+          </p>
+        </Modal>
+      )}
+    </>
+  );
 }
 
 function StatusNodeManager({ statusNodes, saving, onSave, onDelete }) {
   const [editing, setEditing] = useState(null);
   const [removing, setRemoving] = useState(null);
   const [query, setQuery] = useState('');
-  const visible = statusNodes.filter(item => `${item.displayNameZh} ${item.endpoint}`.toLowerCase().includes(query.toLowerCase()));
-  const remove = async () => { if (!removing) return; await onDelete(removing); setRemoving(null); };
-  return <><div className="studioHeading adminListHeading"><div><p>运行监控</p><h1>站点状态 <small>{visible.length} 个节点</small></h1></div><button className="primaryButton" onClick={() => setEditing({})}><Plus size={17}/>新增节点</button></div><section className="adminDirectory"><AdminListToolbar query={query} onQuery={setQuery}><label>状态<select defaultValue="all"><option value="all">全部</option><option>正常</option><option>异常</option></select></label><label>排序<select defaultValue="default"><option value="default">默认</option></select></label></AdminListToolbar><div className="adminListRows">{visible.map(item => <article key={item.id}><label className="adminListCheck"><input type="checkbox" aria-label={`选择 ${item.displayNameZh}`}/></label><div className="adminListPrimary"><b>{item.displayNameZh}</b><span>{item.endpoint} · {item.lastLatencyMs == null ? '等待探测' : `${item.lastLatencyMs} ms`}</span></div><div className="adminListActions"><span className={`adminTypePill ${item.lastStatus === 'healthy' ? 'healthy' : ''}`}>{item.lastStatus || 'unknown'}</span><button onClick={() => setEditing(item)}><Pencil size={16}/>编辑</button><button className="dangerIcon" onClick={() => setRemoving(item)}><Trash2 size={16}/></button></div></article>)}</div><AdminListFooter total={visible.length}/></section>{editing && <StatusNodeEditor item={editing.id ? editing : null} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSave(form, editing.id ? editing : null); setEditing(null); }}/>} {removing && <Modal title="确认删除节点" onClose={() => setRemoving(null)} actions={<><button className="secondaryButton" onClick={() => setRemoving(null)}>取消</button><button className="dangerButton" disabled={saving} onClick={remove}>{saving ? '删除中…' : '确认删除'}</button></>}><p>将软删除「{removing.displayNameZh}」，前台状态列表将不再展示。</p></Modal>}</>;
+  const visible = statusNodes.filter((item) => `${item.displayNameZh} ${item.endpoint}`.toLowerCase().includes(query.toLowerCase()));
+  const remove = async () => {
+    if (!removing) return;
+    await onDelete(removing);
+    setRemoving(null);
+  };
+  return (
+    <>
+      <div className="studioHeading adminListHeading">
+        <div>
+          <p>运行监控</p>
+          <h1>
+            站点状态 <small>{visible.length} 个节点</small>
+          </h1>
+        </div>
+        <button className="primaryButton" onClick={() => setEditing({})}>
+          <Plus size={17} />
+          新增节点
+        </button>
+      </div>
+      <section className="adminDirectory">
+        <AdminListToolbar query={query} onQuery={setQuery}>
+          <label>
+            状态
+            <select defaultValue="all">
+              <option value="all">全部</option>
+              <option>正常</option>
+              <option>异常</option>
+            </select>
+          </label>
+          <label>
+            排序
+            <select defaultValue="default">
+              <option value="default">默认</option>
+            </select>
+          </label>
+        </AdminListToolbar>
+        <div className="adminListRows">
+          {visible.map((item) => (
+            <article key={item.id}>
+              <label className="adminListCheck">
+                <input type="checkbox" aria-label={`选择 ${item.displayNameZh}`} />
+              </label>
+              <div className="adminListPrimary">
+                <b>{item.displayNameZh}</b>
+                <span>
+                  {item.endpoint} · {item.lastLatencyMs == null ? '等待探测' : `${item.lastLatencyMs} ms`}
+                </span>
+              </div>
+              <div className="adminListActions">
+                <span className={`adminTypePill ${item.lastStatus === 'healthy' ? 'healthy' : ''}`}>{item.lastStatus || 'unknown'}</span>
+                <button onClick={() => setEditing(item)}>
+                  <Pencil size={16} />
+                  编辑
+                </button>
+                <button className="dangerIcon" onClick={() => setRemoving(item)}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+        <AdminListFooter total={visible.length} />
+      </section>
+      {editing && (
+        <StatusNodeEditor
+          item={editing.id ? editing : null}
+          saving={saving}
+          onClose={() => setEditing(null)}
+          onSave={async (form) => {
+            await onSave(form, editing.id ? editing : null);
+            setEditing(null);
+          }}
+        />
+      )}{' '}
+      {removing && (
+        <Modal
+          title="确认删除节点"
+          onClose={() => setRemoving(null)}
+          actions={
+            <>
+              <button className="secondaryButton" onClick={() => setRemoving(null)}>
+                取消
+              </button>
+              <button className="dangerButton" disabled={saving} onClick={remove}>
+                {saving ? '删除中…' : '确认删除'}
+              </button>
+            </>
+          }
+        >
+          <p>将软删除「{removing.displayNameZh}」，前台状态列表将不再展示。</p>
+        </Modal>
+      )}
+    </>
+  );
 }
 
-function SiteSettingsOnly(props) { return <SiteSettingsBase {...props}/>; }
-function AuditLogView({ items, loading }) { const [query, setQuery] = useState(''); const visible = items.filter(item => `${item.action} ${item.actorName || ''} ${item.targetType}`.toLowerCase().includes(query.toLowerCase())); return <><div className="studioHeading adminListHeading"><div><p>安全与合规</p><h1>审计日志 <small>{visible.length} 条</small></h1></div></div><section className="adminDirectory">{loading ? <Empty>正在读取审计日志…</Empty> : <><AdminListToolbar query={query} onQuery={setQuery}><label>对象<select defaultValue="all"><option value="all">全部</option><option>文章</option><option>用户</option><option>菜单</option></select></label><label>排序<select defaultValue="latest"><option value="latest">最新优先</option></select></label></AdminListToolbar><div className="adminListRows auditRows">{visible.map(item => <article key={item.id}><div className="auditMark">{item.action.split(' ')[0]}</div><div className="adminListPrimary"><b>{item.action.replace('/api/v1/studio/', '')}</b><span>{item.actorName || '系统'} · {item.targetType}{item.targetId ? ` / ${item.targetId.slice(0, 8)}` : ''}</span></div><div className="adminListActions"><time>{new Date(item.ctime).toLocaleString('zh-CN')}</time></div></article>)}</div><AdminListFooter total={visible.length}/></>}</section></>; }
+function AuditLogView({ items, loading }) {
+  const [query, setQuery] = useState('');
+  const visible = items.filter((item) =>
+    `${item.action} ${item.actorName || ''} ${item.targetType}`.toLowerCase().includes(query.toLowerCase()),
+  );
+  return (
+    <>
+      <div className="studioHeading adminListHeading">
+        <div>
+          <p>安全与合规</p>
+          <h1>
+            审计日志 <small>{visible.length} 条</small>
+          </h1>
+        </div>
+      </div>
+      <section className="adminDirectory">
+        {loading ? (
+          <Empty>正在读取审计日志…</Empty>
+        ) : (
+          <>
+            <AdminListToolbar query={query} onQuery={setQuery}>
+              <label>
+                对象
+                <select defaultValue="all">
+                  <option value="all">全部</option>
+                  <option>文章</option>
+                  <option>用户</option>
+                  <option>菜单</option>
+                </select>
+              </label>
+              <label>
+                排序
+                <select defaultValue="latest">
+                  <option value="latest">最新优先</option>
+                </select>
+              </label>
+            </AdminListToolbar>
+            <div className="adminListRows auditRows">
+              {visible.map((item) => (
+                <article key={item.id}>
+                  <div className="auditMark">{item.action.split(' ')[0]}</div>
+                  <div className="adminListPrimary">
+                    <b>{item.action.replace('/api/v1/studio/', '')}</b>
+                    <span>
+                      {item.actorName || '系统'} · {item.targetType}
+                      {item.targetId ? ` / ${item.targetId.slice(0, 8)}` : ''}
+                    </span>
+                  </div>
+                  <div className="adminListActions">
+                    <time>{new Date(item.ctime).toLocaleString('zh-CN')}</time>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <AdminListFooter total={visible.length} />
+          </>
+        )}
+      </section>
+    </>
+  );
+}
 
 const studioPaths = {
   概览: '/studio/home',
   文章: '/studio/posts',
   独立页: '/studio/pages',
-  分类标签: '/studio/taxonomy',
+  分类: '/studio/categories',
+  标签: '/studio/tags',
   评论: '/studio/comments',
   'AI 工具': '/studio/ai-tools',
   友情链接: '/studio/friend-links',
@@ -352,7 +3809,7 @@ const studioPaths = {
   菜单管理: '/studio/navigation',
   站点状态: '/studio/site-status',
   审计日志: '/studio/audit-logs',
-  站点设置: '/studio/settings'
+  站点设置: '/studio/settings',
 };
 
 function readStudioRoute(location = window.location.pathname + window.location.search) {
@@ -369,6 +3826,7 @@ function readStudioRoute(location = window.location.pathname + window.location.s
   const pageMatch = pathname.match(/^\/studio\/pages\/([^/]+)$/);
   if (pageMatch) return { active: '独立页', page, editor: { kind: 'page', id: decodeURIComponent(pageMatch[1]) } };
   if (pathname === '/studio/pages') return { active: '独立页', page, trash };
+  if (pathname === '/studio/taxonomy') return { active: '分类', page, trash };
   const byPath = Object.entries(studioPaths).find(([, value]) => value === pathname);
   return { active: byPath?.[0] || '概览', page, trash };
 }
@@ -380,17 +3838,164 @@ function PhotoGalleryManager({ galleries, media, saving, onOpen, onSave, onDelet
   const [editing, setEditing] = useState(null);
   const [removing, setRemoving] = useState(null);
   const load = async () => {
-    setState(current => ({ ...current, loading: true, error: '' }));
+    setState((current) => ({ ...current, loading: true, error: '' }));
     try {
-      const result = await studioApi.media({ page: 1, page_size: 120, gallery_id: group === 'all' ? '' : group, gallery_only: true, media_type: 'image', sort: 'newest' });
+      const result = await studioApi.media({
+        page: 1,
+        page_size: 120,
+        gallery_id: group === 'all' ? '' : group,
+        gallery_only: true,
+        media_type: 'image',
+        sort: 'newest',
+      });
       setState({ loading: false, items: result.data || [], meta: result.meta || {}, error: '' });
-    } catch (reason) { setState({ loading: false, items: [], meta: {}, error: reason.message || '无法读取图库图片。' }); }
+    } catch (reason) {
+      setState({ loading: false, items: [], meta: {}, error: reason.message || '无法读取图库图片。' });
+    }
   };
-  useEffect(() => { load(); }, [group]);
-  useEffect(() => { if (group !== 'all' && !galleries.some(item => item.id === group)) setGroup('all'); }, [galleries, group]);
-  const edit = async item => setEditing(item ? await onOpen(item) : {});
-  const namedAssets = state.items.map(asset => ({ ...asset, galleryNames: galleries.filter(item => asset.galleryIds?.includes(item.id)).map(item => item.name) }));
-  return <><div className="studioHeading mediaHeading"><div><p>内容资产</p><h1>图库 <small>{state.meta.total ?? namedAssets.length} 张图片</small></h1></div><div className="mediaHeadingActions"><button className="secondaryButton" onClick={() => edit(null)}><Plus size={17}/>新建分组</button><button className="primaryButton" onClick={load}><RefreshCw size={17}/>刷新图片</button></div></div><section className="mediaLibrary"><div className="mediaGroups"><button className={group === 'all' ? 'active' : ''} onClick={() => setGroup('all')}>全部 <small>{state.meta.total ?? namedAssets.length}</small></button>{galleries.map(item => <button className={group === item.id ? 'active' : ''} key={item.id} onClick={() => setGroup(item.id)}>{item.name} <small>{item.itemCount}</small></button>)}</div>{state.loading ? <Empty>正在读取图片…</Empty> : state.error ? <div className="mediaLoadError">{state.error}<button onClick={load}>重试</button></div> : namedAssets.length ? <div className="mediaAssetGrid">{namedAssets.map(item => <article className="mediaAssetCard" key={item.id}><div className="mediaCardTop"><span>{mediaKind(item.mimeType)}</span></div><MediaPreview item={item} onPreview={setPreviewing}/><div className="mediaAssetInfo"><b title={item.originalName || item.sourceUrl}>{item.originalName || '未命名图片'}</b><small>{item.galleryNames.join('、') || '未分组'}</small></div></article>)}</div> : <Empty>这个分组还没有图片。</Empty>}</section><section className="studioPanel"><header><div><h2>分组管理</h2><p>分组只用于筛选和组织图片；上方始终显示图片，不会再折叠成单个分组卡片。</p></div></header>{galleries.length ? <div className="studioPosts">{galleries.map(item => <article key={item.id}><div><b>{item.name}</b><span>/{item.slug} · {item.itemCount} 张图片 · {item.status}</span></div><div className="rowActions"><button onClick={() => edit(item)}><Pencil size={16}/>编辑</button><button className="dangerIcon" onClick={() => setRemoving(item)}><Trash2 size={16}/></button></div></article>)}</div> : <Empty>暂无分组。</Empty>}</section>{previewing && <MediaInspector item={previewing} assets={namedAssets} onClose={() => setPreviewing(null)} onNavigate={setPreviewing}/>} {editing && <GalleryEditor item={editing.id ? editing : null} media={media} saving={saving} onClose={() => setEditing(null)} onSave={async form => { await onSave(form, editing.id ? editing : null); setEditing(null); }}/>} {removing && <Modal title="确认删除分组" onClose={() => setRemoving(null)} actions={<><button className="secondaryButton" onClick={() => setRemoving(null)}>取消</button><button className="dangerButton" disabled={saving} onClick={async () => { await onDelete(removing); setRemoving(null); }}>{saving ? '删除中…' : '确认删除'}</button></>}><p>删除分组不会删除其中的图片。</p></Modal>}</>;
+  useEffect(() => {
+    load();
+  }, [group]);
+  useEffect(() => {
+    if (group !== 'all' && !galleries.some((item) => item.id === group)) setGroup('all');
+  }, [galleries, group]);
+  const edit = async (item) => setEditing(item ? await onOpen(item) : {});
+  const namedAssets = state.items.map((asset) => ({
+    ...asset,
+    galleryNames: galleries.filter((item) => asset.galleryIds?.includes(item.id)).map((item) => item.name),
+  }));
+  return (
+    <>
+      <div className="studioHeading mediaHeading">
+        <div>
+          <p>内容资产</p>
+          <h1>
+            图库 <small>{state.meta.total ?? namedAssets.length} 张图片</small>
+          </h1>
+        </div>
+        <div className="mediaHeadingActions">
+          <button className="secondaryButton" onClick={() => edit(null)}>
+            <Plus size={17} />
+            新建分组
+          </button>
+          <button className="primaryButton" onClick={load}>
+            <RefreshCw size={17} />
+            刷新图片
+          </button>
+        </div>
+      </div>
+      <section className="mediaLibrary">
+        <div className="mediaGroups">
+          <button className={group === 'all' ? 'active' : ''} onClick={() => setGroup('all')}>
+            全部 <small>{state.meta.total ?? namedAssets.length}</small>
+          </button>
+          {galleries.map((item) => (
+            <button className={group === item.id ? 'active' : ''} key={item.id} onClick={() => setGroup(item.id)}>
+              {item.name} <small>{item.itemCount}</small>
+            </button>
+          ))}
+        </div>
+        {state.loading ? (
+          <Empty>正在读取图片…</Empty>
+        ) : state.error ? (
+          <div className="mediaLoadError">
+            {state.error}
+            <button onClick={load}>重试</button>
+          </div>
+        ) : namedAssets.length ? (
+          <div className="mediaAssetGrid">
+            {namedAssets.map((item) => (
+              <article className="mediaAssetCard" key={item.id}>
+                <div className="mediaCardTop">
+                  <span>{mediaKind(item.mimeType)}</span>
+                </div>
+                <MediaPreview item={item} onPreview={setPreviewing} />
+                <div className="mediaAssetInfo">
+                  <b title={item.originalName || item.sourceUrl}>{item.originalName || '未命名图片'}</b>
+                  <small>{item.galleryNames.join('、') || '未分组'}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty>这个分组还没有图片。</Empty>
+        )}
+      </section>
+      <section className="studioPanel">
+        <header>
+          <div>
+            <h2>分组管理</h2>
+            <p>分组只用于筛选和组织图片；上方始终显示图片，不会再折叠成单个分组卡片。</p>
+          </div>
+        </header>
+        {galleries.length ? (
+          <div className="studioPosts">
+            {galleries.map((item) => (
+              <article key={item.id}>
+                <div>
+                  <b>{item.name}</b>
+                  <span>
+                    /{item.slug} · {item.itemCount} 张图片 · {item.status}
+                  </span>
+                </div>
+                <div className="rowActions">
+                  <button onClick={() => edit(item)}>
+                    <Pencil size={16} />
+                    编辑
+                  </button>
+                  <button className="dangerIcon" onClick={() => setRemoving(item)}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty>暂无分组。</Empty>
+        )}
+      </section>
+      {previewing && (
+        <MediaInspector item={previewing} assets={namedAssets} onClose={() => setPreviewing(null)} onNavigate={setPreviewing} />
+      )}{' '}
+      {editing && (
+        <GalleryEditor
+          item={editing.id ? editing : null}
+          media={media}
+          saving={saving}
+          onClose={() => setEditing(null)}
+          onSave={async (form) => {
+            await onSave(form, editing.id ? editing : null);
+            setEditing(null);
+          }}
+        />
+      )}{' '}
+      {removing && (
+        <Modal
+          title="确认删除分组"
+          onClose={() => setRemoving(null)}
+          actions={
+            <>
+              <button className="secondaryButton" onClick={() => setRemoving(null)}>
+                取消
+              </button>
+              <button
+                className="dangerButton"
+                disabled={saving}
+                onClick={async () => {
+                  await onDelete(removing);
+                  setRemoving(null);
+                }}
+              >
+                {saving ? '删除中…' : '确认删除'}
+              </button>
+            </>
+          }
+        >
+          <p>删除分组不会删除其中的图片。</p>
+        </Modal>
+      )}
+    </>
+  );
 }
 
 export function StudioApp({ navigate, location }) {
@@ -399,7 +4004,25 @@ export function StudioApp({ navigate, location }) {
   const [active, setActive] = useState(initialRoute.active);
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [data, setData] = useState({ dashboard: null, posts: [], postMeta: { page: 1, pageSize: 20, total: 0, totalPages: 0 }, pages: [], categories: [], tags: [], tools: [], friendLinks: [], media: [], galleries: [], users: [], auditLogs: [], navigation: [], navigationMenus: [], navigationTargets: { posts: [], pages: [], categories: [], tags: [] }, statusNodes: [], comments: [], settings: null });
+  const [data, setData] = useState({
+    dashboard: null,
+    posts: [],
+    postMeta: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+    pages: [],
+    categories: [],
+    tags: [],
+    tools: [],
+    friendLinks: [],
+    media: [],
+    galleries: [],
+    users: [],
+    auditLogs: [],
+    navigation: [],
+    navigationMenus: [],
+    navigationTargets: { posts: [], pages: [], categories: [], tags: [] },
+    statusNodes: [],
+    settings: null,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -411,124 +4034,539 @@ export function StudioApp({ navigate, location }) {
   const route = readStudioRoute(location);
 
   const notify = (type, message) => setToast({ id: Date.now(), type, message });
-  const reportError = (reason, fallback) => { const message = reason?.message || fallback; setError(message); notify('error', message); };
-  useEffect(() => { if (!toast) return undefined; const timer = window.setTimeout(() => setToast(null), 3600); return () => window.clearTimeout(timer); }, [toast]);
+  const reportError = (reason, fallback) => {
+    const message = reason?.message || fallback;
+    setError(message);
+    notify('error', message);
+  };
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(null), 3600);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
-  const patch = (key, value) => setData(current => ({ ...current, [key]: value }));
+  const patch = (key, value) => setData((current) => ({ ...current, [key]: value }));
   const loadPosts = async (page = 1, trashed = route.trash) => {
     const posts = await studioApi.posts({ page, pageSize: 20, trashed });
-    setData(current => ({ ...current, posts: posts.data, postMeta: posts.meta }));
+    setData((current) => ({ ...current, posts: posts.data, postMeta: posts.meta }));
   };
   const goStudio = (name, suffix = '') => navigate(`${studioPaths[name] || '/studio/home'}${suffix}`);
   const closeEditor = () => goStudio(editor?.kind === 'page' ? '独立页' : '文章');
-  const openPostEditor = item => navigate(item?.id ? `/studio/posts/${encodeURIComponent(item.id)}` : '/studio/posts/new');
-  const openPageEditor = item => navigate(item?.id ? `/studio/pages/${encodeURIComponent(item.id)}` : '/studio/pages/new');
+  const openPostEditor = (item) => navigate(item?.id ? `/studio/posts/${encodeURIComponent(item.id)}` : '/studio/posts/new');
+  const openPageEditor = (item) => navigate(item?.id ? `/studio/pages/${encodeURIComponent(item.id)}` : '/studio/pages/new');
+
+  // Each tab fetches its own data when opened.  Loading every module up front
+  // cost an administrator 17 requests per visit, most of them never looked at.
+  const tabLoaders = {
+    文章: {
+      roles: ['admin', 'editor', 'author'],
+      load: async () => {
+        const posts = await studioApi.posts({ page: route.page, pageSize: 20, trashed: route.trash });
+        return { posts: posts.data, postMeta: posts.meta };
+      },
+    },
+    独立页: {
+      roles: ['admin', 'editor'],
+      load: async () => ({ pages: (await studioApi.pages({ trashed: route.trash })).data || [] }),
+    },
+    'AI 工具': { roles: ['admin'], load: async () => ({ tools: (await studioApi.tools()).data }) },
+    友情链接: { roles: ['admin'], load: async () => ({ friendLinks: (await studioApi.friendLinks()).data }) },
+    图库: {
+      roles: ['admin', 'editor'],
+      load: async () => {
+        const [galleries, media] = await Promise.all([studioApi.galleries(), studioApi.media()]);
+        return { galleries: galleries.data, media: media.data };
+      },
+    },
+    用户管理: {
+      roles: ['admin'],
+      load: async () => {
+        const [users, media] = await Promise.all([studioApi.users(), studioApi.media()]);
+        return { users: users.data, media: media.data };
+      },
+    },
+    菜单管理: {
+      roles: ['admin'],
+      load: async () => {
+        const [navigation, navigationMenus, navigationTargets] = await Promise.all([
+          studioApi.navigation(),
+          studioApi.navigationMenus(),
+          studioApi.navigationTargets(),
+        ]);
+        return { navigation: navigation.data, navigationMenus: navigationMenus.data, navigationTargets: navigationTargets.data };
+      },
+    },
+    站点状态: { roles: ['admin'], load: async () => ({ statusNodes: (await studioApi.statusNodes()).data }) },
+    审计日志: { roles: ['admin'], load: async () => ({ auditLogs: (await studioApi.auditLogs()).data || [] }) },
+    站点设置: { roles: ['admin'], load: async () => ({ settings: (await studioApi.siteSettings()).data }) },
+  };
 
   const load = async () => {
     setLoading(true);
     try {
       const me = await authApi.me();
-      if (!['admin', 'editor', 'author'].includes(me.data.role)) { navigate('/'); return; }
+      if (!['admin', 'editor', 'author'].includes(me.data.role)) {
+        navigate('/');
+        return;
+      }
+      const [dashboard, categories, tags] = await Promise.all([studioApi.dashboard(), studioApi.categories(), studioApi.tags()]);
+      setData((current) => ({ ...current, dashboard: dashboard.data, categories: categories.data, tags: tags.data }));
+      // Set last: it releases the per-tab loader below.
       setUser(me.data);
-      const [dashboard, posts, categories, tags] = await Promise.all([
-        studioApi.dashboard(), studioApi.posts({ page: route.page, pageSize: 20, trashed: route.trash }), studioApi.categories(), studioApi.tags()
-      ]);
-      const next = { dashboard: dashboard.data, posts: posts.data, postMeta: posts.meta, pages: [], categories: categories.data, tags: tags.data, tools: [], friendLinks: [], media: [], galleries: [], users: [], auditLogs: [], navigation: [], navigationMenus: [], navigationTargets: { posts: [], pages: [], categories: [], tags: [] }, statusNodes: [], comments: [], settings: null };
-      if (me.data.role !== 'author') {
-        const [pages, comments] = await Promise.all([studioApi.pages({ trashed: route.trash && route.active === '独立页' }), studioApi.comments()]);
-        Object.assign(next, { pages: pages.data, comments: comments.data });
-      }
-      if (me.data.role === 'admin') {
-        const [tools, settings, friendLinks, media, galleries, users, auditLogs, navigation, navigationMenus, navigationTargets, statusNodes] = await Promise.all([studioApi.tools(), studioApi.siteSettings(), studioApi.friendLinks(), studioApi.media(), studioApi.galleries(), studioApi.users(), studioApi.auditLogs(), studioApi.navigation(), studioApi.navigationMenus(), studioApi.navigationTargets(), studioApi.statusNodes()]);
-        Object.assign(next, { tools: tools.data, settings: settings.data, friendLinks: friendLinks.data, media: media.data, galleries: galleries.data, users: users.data, auditLogs: auditLogs.data, navigation: navigation.data, navigationMenus: navigationMenus.data, navigationTargets: navigationTargets.data, statusNodes: statusNodes.data });
-      }
-      setData(next);
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) {
         navigate(`/login?returnTo=${encodeURIComponent(location || '/studio')}`);
       } else setError(reason.message || '无法读取工作台数据。');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   useEffect(() => {
     setActive(route.active);
     setOpen(false);
     if (!user) return undefined;
+    let alive = true;
     if (!route.editor) {
       setEditor(null);
-      if (route.active === '文章') {
-        setLoading(true);
-        loadPosts(route.page, route.trash).catch(reason => setError(reason.message || '无法读取文章分页。')).finally(() => setLoading(false));
+      const loader = tabLoaders[route.active];
+      if (!loader || !loader.roles.includes(user.role)) {
+        setLoading(false);
+        return undefined;
       }
-      if (route.active === '独立页' && user.role !== 'author') {
-        setLoading(true);
-        studioApi.pages({ trashed: route.trash }).then(result => patch('pages', result.data || [])).catch(reason => setError(reason.message || '无法读取独立页。')).finally(() => setLoading(false));
-      }
-      if (route.active === '审计日志') {
-        setLoading(true);
-        studioApi.auditLogs().then(result => patch('auditLogs', result.data || [])).catch(reason => setError(reason.message || '无法读取审计日志。')).finally(() => setLoading(false));
-      }
+      setLoading(true);
+      loader
+        .load()
+        .then((next) => alive && setData((current) => ({ ...current, ...next })))
+        .catch((reason) => alive && setError(reason.message || `无法读取${route.active}数据。`))
+        .finally(() => alive && setLoading(false));
+      return () => {
+        alive = false;
+      };
+    }
+    setLoading(false);
+    if (!route.editor.id) {
+      setEditor({ kind: route.editor.kind });
       return undefined;
     }
-    if (!route.editor.id) { setEditor({ kind: route.editor.kind }); return undefined; }
-    let alive = true;
     setEditor({ kind: route.editor.kind, loading: true });
     const request = route.editor.kind === 'post' ? studioApi.post(route.editor.id) : studioApi.page(route.editor.id);
-    request.then(result => alive && setEditor({ kind: route.editor.kind, item: result.data })).catch(reason => {
-      if (!alive) return;
-      setError(reason.message || '无法读取编辑内容。');
-      goStudio(route.editor.kind === 'post' ? '文章' : '独立页');
-    });
-    return () => { alive = false; };
+    request
+      .then((result) => alive && setEditor({ kind: route.editor.kind, item: result.data }))
+      .catch((reason) => {
+        if (!alive) return;
+        setError(reason.message || '无法读取编辑内容。');
+        goStudio(route.editor.kind === 'post' ? '文章' : '独立页');
+      });
+    return () => {
+      alive = false;
+    };
   }, [location, user]);
 
-  const savePost = async form => {
+  const savePost = async (form) => {
     setSaving(true);
     try {
-      const payload = { title: form.title.trim(), slug: form.slug, summary: form.summary || null, content: form.content, contentFormat: form.contentFormat || 'markdown', coverUrl: form.coverUrl || null, locale: form.locale, categoryIds: form.categoryIds || [], tagIds: form.tagIds || [] };
+      const payload = {
+        title: form.title.trim(),
+        slug: form.slug,
+        summary: form.summary || null,
+        content: form.content,
+        contentFormat: form.contentFormat || 'markdown',
+        coverUrl: form.coverUrl || null,
+        locale: form.locale,
+        categoryIds: form.categoryIds || [],
+        tagIds: form.tagIds || [],
+      };
       await (editor.item?.id ? studioApi.updatePost(editor.item.id, payload) : studioApi.createPost(payload));
       notify('success', '文章已保存。');
       goStudio('文章', route.page > 1 ? `?page=${route.page}` : '');
-    } catch (reason) { reportError(reason, '文章保存失败。'); } finally { setSaving(false); }
+    } catch (reason) {
+      reportError(reason, '文章保存失败。');
+    } finally {
+      setSaving(false);
+    }
   };
-  const savePage = async form => {
+  const savePage = async (form) => {
     setSaving(true);
     try {
       const result = editor.item?.id ? await studioApi.updatePage(editor.item.id, form) : await studioApi.createPage(form);
-      patch('pages', editor.item?.id ? data.pages.map(item => item.id === result.data.id ? result.data : item) : [result.data, ...data.pages]);
+      patch(
+        'pages',
+        editor.item?.id ? data.pages.map((item) => (item.id === result.data.id ? result.data : item)) : [result.data, ...data.pages],
+      );
       notify('success', '独立页已保存。');
       goStudio('独立页');
-    } catch (reason) { reportError(reason, '独立页保存失败。'); } finally { setSaving(false); }
+    } catch (reason) {
+      reportError(reason, '独立页保存失败。');
+    } finally {
+      setSaving(false);
+    }
   };
-  const saveTaxonomy = async form => { const name = editor.kind === 'category' ? 'Category' : 'Tag'; const key = editor.kind === 'category' ? 'categories' : 'tags'; setSaving(true); try { const result = editor.item?.id ? await studioApi[`update${name}`](editor.item.id, form) : await studioApi[`create${name}`](form); patch(key, editor.item?.id ? data[key].map(item => item.id === result.data.id ? result.data : item) : [...data[key], result.data]); notify('success', '分类标签已保存。'); setEditor(null); } catch (reason) { reportError(reason, '分类标签保存失败。'); } finally { setSaving(false); } };
-  const saveTool = async form => { setSaving(true); try { const result = editor.item?.id ? await studioApi.updateTool(editor.item.id, form) : await studioApi.createTool(form); patch('tools', editor.item?.id ? data.tools.map(item => item.id === result.data.id ? result.data : item) : [...data.tools, result.data]); notify('success', 'AI 工具已保存。'); setEditor(null); } catch (reason) { reportError(reason, 'AI 工具保存失败。'); } finally { setSaving(false); } };
-  const saveFriendLink = async (form, item) => { setSaving(true); try { const result = item?.id ? await studioApi.updateFriendLink(item.id, form) : await studioApi.createFriendLink(form); patch('friendLinks', item?.id ? data.friendLinks.map(row => row.id === result.data.id ? result.data : row) : [...data.friendLinks, result.data]); notify('success', '友情链接已保存。'); } catch (reason) { reportError(reason, '友情链接保存失败。'); } finally { setSaving(false); } };
-  const deleteFriendLink = async item => { setSaving(true); try { await studioApi.deleteFriendLink(item.id); patch('friendLinks', data.friendLinks.filter(row => row.id !== item.id)); notify('success', '友情链接已删除。'); } catch (reason) { reportError(reason, '友情链接删除失败。'); } finally { setSaving(false); } };
-  const saveMedia = async (item, form) => { setSaving(true); try { const result = await studioApi.updateMedia(item.id, form); patch('media', data.media.map(row => row.id === result.data.id ? result.data : row)); notify('success', '附件信息已保存。'); } catch (reason) { reportError(reason, '附件保存失败。'); } finally { setSaving(false); } };
-  const deleteMedia = async item => { setSaving(true); try { await studioApi.deleteMedia(item.id); patch('media', data.media.filter(row => row.id !== item.id)); patch('galleries', data.galleries.map(row => ({ ...row, itemCount: Math.max(0, row.itemCount - 1) }))); notify('success', '附件已移除。'); } catch (reason) { reportError(reason, '附件移除失败。'); } finally { setSaving(false); } };
-  const openGallery = async item => { if (!item) return {}; try { const result = await studioApi.gallery(item.id); return result.data; } catch (reason) { setError(reason.message || '无法读取图库。'); return null; } };
-  const saveGallery = async (form, item) => { setSaving(true); try { const result = item?.id ? await studioApi.updateGallery(item.id, form) : await studioApi.createGallery(form); patch('galleries', item?.id ? data.galleries.map(row => row.id === result.data.id ? result.data : row) : [...data.galleries, result.data]); notify('success', '图库已保存。'); } catch (reason) { reportError(reason, '图库保存失败。'); } finally { setSaving(false); } };
-  const deleteGallery = async item => { setSaving(true); try { await studioApi.deleteGallery(item.id); patch('galleries', data.galleries.filter(row => row.id !== item.id)); notify('success', '图库已删除。'); } catch (reason) { reportError(reason, '图库删除失败。'); } finally { setSaving(false); } };
-  const saveUser = async (item, form) => { setSaving(true); try { const result = await studioApi.updateUser(item.id, form); patch('users', data.users.map(row => row.id === result.data.id ? result.data : row)); notify('success', '用户信息已保存。'); } catch (reason) { reportError(reason, '用户保存失败。'); } finally { setSaving(false); } };
-  const saveNavigation = async (form, item) => { setSaving(true); try { const result = item?.id ? await studioApi.updateNavigation(item.id, form) : await studioApi.createNavigation(form); patch('navigation', item?.id ? data.navigation.map(row => row.id === result.data.id ? result.data : row) : [...data.navigation, result.data]); notify('success', '菜单已保存。'); } catch (reason) { reportError(reason, '菜单保存失败。'); } finally { setSaving(false); } };
-  const deleteNavigation = async item => { setSaving(true); try { await studioApi.deleteNavigation(item.id); patch('navigation', data.navigation.filter(row => row.id !== item.id)); notify('success', '菜单已删除。'); } catch (reason) { reportError(reason, '菜单删除失败。'); } finally { setSaving(false); } };
-  const saveNavigationMenu = async form => { setSaving(true); try { const result = await studioApi.createNavigationMenu(form); patch('navigationMenus', [...data.navigationMenus, result.data]); notify('success', '菜单已创建。'); } catch (reason) { reportError(reason, '菜单创建失败。'); } finally { setSaving(false); } };
-  const deleteNavigationMenu = async item => { setSaving(true); try { await studioApi.deleteNavigationMenu(item.id); patch('navigationMenus', data.navigationMenus.filter(row => row.id !== item.id)); patch('navigation', data.navigation.filter(row => row.menuId !== item.id)); notify('success', '菜单及其菜单项已删除。'); } catch (reason) { reportError(reason, '菜单删除失败。'); } finally { setSaving(false); } };
-  const saveStatusNode = async (form, item) => { setSaving(true); try { const result = item?.id ? await studioApi.updateStatusNode(item.id, form) : await studioApi.createStatusNode(form); patch('statusNodes', item?.id ? data.statusNodes.map(row => row.id === result.data.id ? result.data : row) : [...data.statusNodes, result.data]); notify('success', '状态节点已保存。'); } catch (reason) { reportError(reason, '状态节点保存失败。'); } finally { setSaving(false); } };
-  const deleteStatusNode = async item => { setSaving(true); try { await studioApi.deleteStatusNode(item.id); patch('statusNodes', data.statusNodes.filter(row => row.id !== item.id)); notify('success', '状态节点已删除。'); } catch (reason) { reportError(reason, '状态节点删除失败。'); } finally { setSaving(false); } };
+  const saveTaxonomy = async (form) => {
+    const name = editor.kind === 'category' ? 'Category' : 'Tag';
+    const key = editor.kind === 'category' ? 'categories' : 'tags';
+    setSaving(true);
+    try {
+      const result = editor.item?.id ? await studioApi[`update${name}`](editor.item.id, form) : await studioApi[`create${name}`](form);
+      patch(
+        key,
+        editor.item?.id ? data[key].map((item) => (item.id === result.data.id ? result.data : item)) : [...data[key], result.data],
+      );
+      notify('success', '分类标签已保存。');
+      setEditor(null);
+    } catch (reason) {
+      reportError(reason, '分类标签保存失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveTool = async (form) => {
+    setSaving(true);
+    try {
+      const result = editor.item?.id ? await studioApi.updateTool(editor.item.id, form) : await studioApi.createTool(form);
+      patch(
+        'tools',
+        editor.item?.id ? data.tools.map((item) => (item.id === result.data.id ? result.data : item)) : [...data.tools, result.data],
+      );
+      notify('success', 'AI 工具已保存。');
+      setEditor(null);
+    } catch (reason) {
+      reportError(reason, 'AI 工具保存失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveFriendLink = async (form, item) => {
+    setSaving(true);
+    try {
+      const result = item?.id ? await studioApi.updateFriendLink(item.id, form) : await studioApi.createFriendLink(form);
+      patch(
+        'friendLinks',
+        item?.id ? data.friendLinks.map((row) => (row.id === result.data.id ? result.data : row)) : [...data.friendLinks, result.data],
+      );
+      notify('success', '友情链接已保存。');
+    } catch (reason) {
+      reportError(reason, '友情链接保存失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const deleteFriendLink = async (item) => {
+    setSaving(true);
+    try {
+      await studioApi.deleteFriendLink(item.id);
+      patch(
+        'friendLinks',
+        data.friendLinks.filter((row) => row.id !== item.id),
+      );
+      notify('success', '友情链接已删除。');
+    } catch (reason) {
+      reportError(reason, '友情链接删除失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveMedia = async (item, form) => {
+    setSaving(true);
+    try {
+      const result = await studioApi.updateMedia(item.id, form);
+      patch(
+        'media',
+        data.media.map((row) => (row.id === result.data.id ? result.data : row)),
+      );
+      notify('success', '附件信息已保存。');
+    } catch (reason) {
+      reportError(reason, '附件保存失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const deleteMedia = async (item) => {
+    setSaving(true);
+    try {
+      await studioApi.deleteMedia(item.id);
+      patch(
+        'media',
+        data.media.filter((row) => row.id !== item.id),
+      );
+      patch(
+        'galleries',
+        data.galleries.map((row) => ({ ...row, itemCount: Math.max(0, row.itemCount - 1) })),
+      );
+      notify('success', '附件已移除。');
+    } catch (reason) {
+      reportError(reason, '附件移除失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const openGallery = async (item) => {
+    if (!item) return {};
+    try {
+      const result = await studioApi.gallery(item.id);
+      return result.data;
+    } catch (reason) {
+      setError(reason.message || '无法读取图库。');
+      return null;
+    }
+  };
+  const saveGallery = async (form, item) => {
+    setSaving(true);
+    try {
+      const result = item?.id ? await studioApi.updateGallery(item.id, form) : await studioApi.createGallery(form);
+      patch(
+        'galleries',
+        item?.id ? data.galleries.map((row) => (row.id === result.data.id ? result.data : row)) : [...data.galleries, result.data],
+      );
+      notify('success', '图库已保存。');
+    } catch (reason) {
+      reportError(reason, '图库保存失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const deleteGallery = async (item) => {
+    setSaving(true);
+    try {
+      await studioApi.deleteGallery(item.id);
+      patch(
+        'galleries',
+        data.galleries.filter((row) => row.id !== item.id),
+      );
+      notify('success', '图库已删除。');
+    } catch (reason) {
+      reportError(reason, '图库删除失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveUser = async (item, form) => {
+    setSaving(true);
+    try {
+      const result = await studioApi.updateUser(item.id, form);
+      patch(
+        'users',
+        data.users.map((row) => (row.id === result.data.id ? result.data : row)),
+      );
+      notify('success', '用户信息已保存。');
+    } catch (reason) {
+      reportError(reason, '用户保存失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveNavigation = async (form, item) => {
+    setSaving(true);
+    try {
+      const result = item?.id ? await studioApi.updateNavigation(item.id, form) : await studioApi.createNavigation(form);
+      patch(
+        'navigation',
+        item?.id ? data.navigation.map((row) => (row.id === result.data.id ? result.data : row)) : [...data.navigation, result.data],
+      );
+      notify('success', '菜单已保存。');
+    } catch (reason) {
+      reportError(reason, '菜单保存失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const deleteNavigation = async (item) => {
+    setSaving(true);
+    try {
+      await studioApi.deleteNavigation(item.id);
+      patch(
+        'navigation',
+        data.navigation.filter((row) => row.id !== item.id),
+      );
+      notify('success', '菜单已删除。');
+    } catch (reason) {
+      reportError(reason, '菜单删除失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveNavigationMenu = async (form) => {
+    setSaving(true);
+    try {
+      const result = await studioApi.createNavigationMenu(form);
+      patch('navigationMenus', [...data.navigationMenus, result.data]);
+      notify('success', '菜单已创建。');
+    } catch (reason) {
+      reportError(reason, '菜单创建失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const deleteNavigationMenu = async (item) => {
+    setSaving(true);
+    try {
+      await studioApi.deleteNavigationMenu(item.id);
+      patch(
+        'navigationMenus',
+        data.navigationMenus.filter((row) => row.id !== item.id),
+      );
+      patch(
+        'navigation',
+        data.navigation.filter((row) => row.menuId !== item.id),
+      );
+      notify('success', '菜单及其菜单项已删除。');
+    } catch (reason) {
+      reportError(reason, '菜单删除失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveStatusNode = async (form, item) => {
+    setSaving(true);
+    try {
+      const result = item?.id ? await studioApi.updateStatusNode(item.id, form) : await studioApi.createStatusNode(form);
+      patch(
+        'statusNodes',
+        item?.id ? data.statusNodes.map((row) => (row.id === result.data.id ? result.data : row)) : [...data.statusNodes, result.data],
+      );
+      notify('success', '状态节点已保存。');
+    } catch (reason) {
+      reportError(reason, '状态节点保存失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const deleteStatusNode = async (item) => {
+    setSaving(true);
+    try {
+      await studioApi.deleteStatusNode(item.id);
+      patch(
+        'statusNodes',
+        data.statusNodes.filter((row) => row.id !== item.id),
+      );
+      notify('success', '状态节点已删除。');
+    } catch (reason) {
+      reportError(reason, '状态节点删除失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
   const requestRemove = (kind, item) => setDeleting({ kind, item });
-  const remove = async () => { if (!deleting) return; const { kind, item } = deleting; setSaving(true); try { const apiName = kind === 'page' ? 'deletePage' : kind === 'category' ? 'deleteCategory' : kind === 'tag' ? 'deleteTag' : kind === 'tool' ? 'deleteTool' : 'deletePost'; await studioApi[apiName](item.id); const key = kind === 'page' ? 'pages' : `${kind}s`; patch(key, data[key].filter(row => row.id !== item.id)); const recycleable = kind === 'post' || kind === 'page'; notify('success', recycleable ? '内容已移入回收站。' : '内容已删除。'); setEditor(null); setDeleting(null); goStudio(kind === 'page' ? '独立页' : '文章'); } catch (reason) { reportError(reason, '删除失败。'); } finally { setSaving(false); } };
-  const restoreContent = async (kind, item) => { setSaving(true); try { await studioApi[kind === 'page' ? 'restorePage' : 'restorePost'](item.id); notify('success', `${kind === 'page' ? '独立页' : '文章'}已恢复。`); if (kind === 'page') { const result = await studioApi.pages({ trashed: true }); patch('pages', result.data || []); } else await loadPosts(route.page, true); } catch (reason) { reportError(reason, '恢复失败。'); } finally { setSaving(false); } };
-  const togglePost = async item => { try { await studioApi.updatePost(item.id, { status: item.publishedAt ? 'draft' : 'published' }); await loadPosts(route.page); notify('success', item.publishedAt ? '文章已撤回为草稿。' : '文章已发布。'); } catch (reason) { reportError(reason, '更新发布状态失败。'); } };
-  const moderateComment = async (item, status) => { try { const result = await studioApi.moderateComment(item.id, { status }); patch('comments', data.comments.map(comment => comment.id === item.id ? result.data : comment)); notify('success', '评论状态已更新。'); } catch (reason) { reportError(reason, '审核评论失败。'); } };
-  const replyComment = async (item, content) => { setSaving(true); try { const result = await studioApi.replyComment(item.id, { content }); patch('comments', [result.data, ...data.comments]); notify('success', '回复已发布。'); } catch (reason) { reportError(reason, '回复评论失败。'); } finally { setSaving(false); } };
-  const saveSettings = async form => { setSaving(true); try { const result = await studioApi.updateSiteSettings(form); patch('settings', result.data); notify('success', '站点设置已保存。'); } catch (reason) { reportError(reason, '站点设置保存失败。'); } finally { setSaving(false); } };
-  const visibleMenu = useMemo(() => menu.filter(([, name]) => (name === 'AI 工具' || name === '菜单管理' || name === '站点状态' || name === '审计日志' || name === '站点设置' ? isAdmin : canEdit) && (name !== '评论' || user?.role !== 'author')), [canEdit, isAdmin, user]);
-  if (!user) return <main className="studioLoading">{loading ? '正在加载工作台…' : error || '无法读取登录状态，请返回登录页后重试。'}</main>;
+  const remove = async () => {
+    if (!deleting) return;
+    const { kind, item } = deleting;
+    setSaving(true);
+    try {
+      const apiName =
+        kind === 'page'
+          ? 'deletePage'
+          : kind === 'category'
+            ? 'deleteCategory'
+            : kind === 'tag'
+              ? 'deleteTag'
+              : kind === 'tool'
+                ? 'deleteTool'
+                : 'deletePost';
+      await studioApi[apiName](item.id);
+      const key = kind === 'page' ? 'pages' : kind === 'category' ? 'categories' : `${kind}s`;
+      patch(
+        key,
+        data[key].filter((row) => row.id !== item.id),
+      );
+      const recycleable = kind === 'post' || kind === 'page';
+      notify('success', recycleable ? '内容已移入回收站。' : '内容已删除。');
+      setEditor(null);
+      setDeleting(null);
+      goStudio(kind === 'page' ? '独立页' : kind === 'category' ? '分类' : kind === 'tag' ? '标签' : '文章');
+    } catch (reason) {
+      reportError(reason, '删除失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const restoreContent = async (kind, item) => {
+    setSaving(true);
+    try {
+      await studioApi[kind === 'page' ? 'restorePage' : 'restorePost'](item.id);
+      notify('success', `${kind === 'page' ? '独立页' : '文章'}已恢复。`);
+      if (kind === 'page') {
+        const result = await studioApi.pages({ trashed: true });
+        patch('pages', result.data || []);
+      } else await loadPosts(route.page, true);
+    } catch (reason) {
+      reportError(reason, '恢复失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const togglePost = async (item) => {
+    try {
+      await studioApi.updatePost(item.id, { status: item.publishedAt ? 'draft' : 'published' });
+      await loadPosts(route.page);
+      notify('success', item.publishedAt ? '文章已撤回为草稿。' : '文章已发布。');
+    } catch (reason) {
+      reportError(reason, '更新发布状态失败。');
+    }
+  };
+  const moderateComment = async (item, status) => {
+    try {
+      await studioApi.moderateComment(item.id, { status });
+      notify('success', '评论状态已更新。');
+    } catch (reason) {
+      reportError(reason, '审核评论失败。');
+    }
+  };
+  const replyComment = async (item, content) => {
+    setSaving(true);
+    try {
+      await studioApi.replyComment(item.id, { content });
+      notify('success', '回复已发布。');
+    } catch (reason) {
+      reportError(reason, '回复评论失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveSettings = async (form) => {
+    setSaving(true);
+    try {
+      const result = await studioApi.updateSiteSettings(form);
+      patch('settings', result.data);
+      notify('success', '站点设置已保存。');
+    } catch (reason) {
+      reportError(reason, '站点设置保存失败。');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const visibleMenu = useMemo(
+    () =>
+      menu.filter(
+        ([, name]) =>
+          (name === 'AI 工具' || name === '菜单管理' || name === '站点状态' || name === '审计日志' || name === '站点设置'
+            ? isAdmin
+            : canEdit) &&
+          (name !== '评论' || user?.role !== 'author'),
+      ),
+    [canEdit, isAdmin, user],
+  );
+  if (!user)
+    return <main className="studioLoading">{loading ? '正在加载工作台…' : error || '无法读取登录状态，请返回登录页后重试。'}</main>;
   const isContentEditor = editor?.kind === 'post' || editor?.kind === 'page';
-  const PostEditor = props => <PostEditorView {...props} categories={data.categories} tags={data.tags}/>;
-  const editorView = editor?.loading ? <section className="postWorkspace"><Empty>正在读取编辑内容…</Empty></section> : editor?.kind === 'post' ? <PostEditor post={editor.item} saving={saving} onClose={closeEditor} onSave={savePost}/> : editor?.kind === 'page' ? <PageEditor page={editor.item} saving={saving} onClose={closeEditor} onSave={savePage}/> : null;
+  const editorView = editor?.loading ? (
+    <section className="postWorkspace">
+      <Empty>正在读取编辑内容…</Empty>
+    </section>
+  ) : editor?.kind === 'post' ? (
+    <PostEditorView
+      post={editor.item}
+      categories={data.categories}
+      tags={data.tags}
+      saving={saving}
+      onClose={closeEditor}
+      onSave={savePost}
+    />
+  ) : editor?.kind === 'page' ? (
+    <PageEditor page={editor.item} saving={saving} onClose={closeEditor} onSave={savePage} />
+  ) : null;
   const logout = async () => {
     try {
       await authApi.logout();
@@ -537,43 +4575,197 @@ export function StudioApp({ navigate, location }) {
       reportError(reason, '退出登录失败，请重试。');
     }
   };
-  const activeView = editorView || (
-    active === '概览' ? <Overview dashboard={data.dashboard} loading={loading} setActive={goStudio} onNewPost={() => openPostEditor()}/> :
-    active === '文章' ? <PostManager posts={data.posts} meta={data.postMeta} loading={loading} categories={data.categories} tags={data.tags} inTrash={route.trash} onNew={() => openPostEditor()} onEdit={openPostEditor} onDelete={item => requestRemove('post', item)} onRestore={item => restoreContent('post', item)} onPageChange={page => goStudio('文章', `${route.trash ? '?view=trash&' : '?'}page=${page}`)} onToggleTrash={() => goStudio('文章', route.trash ? '' : '?view=trash')} onToggle={togglePost} navigate={navigate}/> :
-    active === '独立页' ? <PageManager pages={data.pages} loading={loading} inTrash={route.trash} onNew={() => openPageEditor()} onEdit={openPageEditor} onDelete={item => requestRemove('page', item)} onRestore={item => restoreContent('page', item)} onToggleTrash={() => goStudio('独立页', route.trash ? '' : '?view=trash')}/> :
-    active === '分类标签' ? <TaxonomyManager categories={data.categories} tags={data.tags} loading={loading} onEdit={(kind, item) => setEditor({ kind, item })}/> :
-    active === '评论' ? <Comments comments={data.comments} loading={loading} saving={saving} canReply={isAdmin} onModerate={moderateComment} onReply={replyComment}/> :
-    active === 'AI 工具' ? <ToolManager tools={data.tools} loading={loading} onEdit={item => setEditor({ kind: 'tool', item })}/> :
-    active === '友情链接' ? <FriendLinkManager items={data.friendLinks} saving={saving} onSave={saveFriendLink} onDelete={deleteFriendLink}/> :
-    active === '附件管理' ? <MediaManager items={data.media} saving={saving} onSave={saveMedia} onDelete={deleteMedia}/> :
-    active === '图库' ? <PhotoGalleryManager galleries={data.galleries} media={data.media} saving={saving} onOpen={openGallery} onSave={saveGallery} onDelete={deleteGallery}/> :
-    active === '用户管理' ? <UserManager items={data.users} media={data.media} saving={saving} onSave={saveUser}/> :
-    active === '审计日志' ? <AuditLogView items={data.auditLogs} loading={loading}/> :
-    active === '菜单管理' ? <MenuManager navigation={data.navigation} menus={data.navigationMenus} posts={data.navigationTargets.posts} pages={data.navigationTargets.pages} categories={data.navigationTargets.categories} tags={data.navigationTargets.tags} saving={saving} onSave={saveNavigation} onDelete={deleteNavigation} onSaveMenu={saveNavigationMenu} onDeleteMenu={deleteNavigationMenu}/> :
-    active === '站点状态' ? <StatusNodeManager statusNodes={data.statusNodes} saving={saving} onSave={saveStatusNode} onDelete={deleteStatusNode}/> :
-    <SiteSettingsOnly settings={data.settings} loading={loading} saving={saving} onSave={saveSettings}/>
-  );
-  return <main className="studioShell">
-    <aside className={open ? 'studioSidebar open' : 'studioSidebar'}>
-      <a className="studioBrand" href="/" onClick={event => { event.preventDefault(); navigate('/'); }}>猫子的世界 <small>STUDIO</small></a>
-      <nav>{visibleMenu.map(([Icon, label]) => <button className={active === label ? 'active' : ''} key={label} onClick={() => goStudio(label)}><Icon size={18}/>{label}</button>)}</nav>
-    </aside>
-    <section className="studioContent">
-      <header className="studioTopbar">
-        <button className="mobileStudioMenu" onClick={() => setOpen(value => !value)} aria-label="打开工作台菜单"><Menu size={22}/></button>
-        <div className="studioCrumb">工作台 <span>/</span> {isContentEditor ? (editor.kind === 'post' ? '文章编辑器' : '独立页编辑器') : active}</div>
-        <div className="studioAccount">
-          <button className="studioUser" onClick={() => setAccountOpen(value => !value)} aria-expanded={accountOpen} aria-haspopup="menu">
-            {user.avatarUrl ? <img src={user.avatarUrl} alt={`${user.displayName || user.email} 的头像`}/> : <span>{user.displayName?.slice(0, 1) || '猫'}</span>}<div><b>{user.email}</b><small>{user.displayName} · {user.role}</small></div><ChevronDown size={16}/>
+  const activeView =
+    editorView ||
+    (active === '概览' ? (
+      <Overview dashboard={data.dashboard} loading={loading} setActive={goStudio} onNewPost={() => openPostEditor()} />
+    ) : active === '文章' ? (
+      <PostManager
+        posts={data.posts}
+        meta={data.postMeta}
+        loading={loading}
+        categories={data.categories}
+        tags={data.tags}
+        inTrash={route.trash}
+        onNew={() => openPostEditor()}
+        onEdit={openPostEditor}
+        onDelete={(item) => requestRemove('post', item)}
+        onRestore={(item) => restoreContent('post', item)}
+        onPageChange={(page) => goStudio('文章', `${route.trash ? '?view=trash&' : '?'}page=${page}`)}
+        onToggleTrash={() => goStudio('文章', route.trash ? '' : '?view=trash')}
+        onToggle={togglePost}
+        navigate={navigate}
+      />
+    ) : active === '独立页' ? (
+      <PageManager
+        pages={data.pages}
+        loading={loading}
+        inTrash={route.trash}
+        onNew={() => openPageEditor()}
+        onEdit={openPageEditor}
+        onDelete={(item) => requestRemove('page', item)}
+        onRestore={(item) => restoreContent('page', item)}
+        onToggleTrash={() => goStudio('独立页', route.trash ? '' : '?view=trash')}
+      />
+    ) : active === '分类' || active === '标签' ? (
+      <TaxonomyManager
+        key={active}
+        type={active === '分类' ? 'category' : 'tag'}
+        items={active === '分类' ? data.categories : data.tags}
+        loading={loading}
+        onEdit={(kind, item) => setEditor({ kind, item })}
+      />
+    ) : active === '评论' ? (
+      <Comments saving={saving} canReply={isAdmin} onModerate={moderateComment} onReply={replyComment} />
+    ) : active === 'AI 工具' ? (
+      <ToolManager tools={data.tools} loading={loading} onEdit={(item) => setEditor({ kind: 'tool', item })} />
+    ) : active === '友情链接' ? (
+      <FriendLinkManager items={data.friendLinks} saving={saving} onSave={saveFriendLink} onDelete={deleteFriendLink} />
+    ) : active === '附件管理' ? (
+      <MediaManager saving={saving} onSave={saveMedia} onDelete={deleteMedia} />
+    ) : active === '图库' ? (
+      <PhotoGalleryManager
+        galleries={data.galleries}
+        media={data.media}
+        saving={saving}
+        onOpen={openGallery}
+        onSave={saveGallery}
+        onDelete={deleteGallery}
+      />
+    ) : active === '用户管理' ? (
+      <UserManager items={data.users} media={data.media} saving={saving} onSave={saveUser} />
+    ) : active === '审计日志' ? (
+      <AuditLogView items={data.auditLogs} loading={loading} />
+    ) : active === '菜单管理' ? (
+      <MenuManager
+        navigation={data.navigation}
+        menus={data.navigationMenus}
+        posts={data.navigationTargets.posts}
+        pages={data.navigationTargets.pages}
+        categories={data.navigationTargets.categories}
+        tags={data.navigationTargets.tags}
+        saving={saving}
+        onSave={saveNavigation}
+        onDelete={deleteNavigation}
+        onSaveMenu={saveNavigationMenu}
+        onDeleteMenu={deleteNavigationMenu}
+      />
+    ) : active === '站点状态' ? (
+      <StatusNodeManager statusNodes={data.statusNodes} saving={saving} onSave={saveStatusNode} onDelete={deleteStatusNode} />
+    ) : (
+      <SiteSettingsBase settings={data.settings} loading={loading} saving={saving} onSave={saveSettings} />
+    ));
+  return (
+    <main className="studioShell">
+      <aside className={open ? 'studioSidebar open' : 'studioSidebar'}>
+        <a
+          className="studioBrand"
+          href="/"
+          onClick={(event) => {
+            event.preventDefault();
+            navigate('/');
+          }}
+        >
+          猫子的世界 <small>STUDIO</small>
+        </a>
+        <nav>
+          {visibleMenu.map(([Icon, label]) => (
+            <button className={active === label ? 'active' : ''} key={label} onClick={() => goStudio(label)}>
+              <Icon size={18} />
+              {label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+      <section className="studioContent">
+        <header className="studioTopbar">
+          <button className="mobileStudioMenu" onClick={() => setOpen((value) => !value)} aria-label="打开工作台菜单">
+            <Menu size={22} />
           </button>
-          {accountOpen && <div className="studioAccountMenu" role="menu"><p>{user.email}</p><button role="menuitem" onClick={logout}><LogOut size={16}/>退出登录</button></div>}
+          <div className="studioCrumb">
+            工作台 <span>/</span> {isContentEditor ? (editor.kind === 'post' ? '文章编辑器' : '独立页编辑器') : active}
+          </div>
+          <div className="studioAccount">
+            <button
+              className="studioUser"
+              onClick={() => setAccountOpen((value) => !value)}
+              aria-expanded={accountOpen}
+              aria-haspopup="menu"
+            >
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt={`${user.displayName || user.email} 的头像`} />
+              ) : (
+                <span>{user.displayName?.slice(0, 1) || '猫'}</span>
+              )}
+              <div>
+                <b>{user.email}</b>
+                <small>
+                  {user.displayName} · {user.role}
+                </small>
+              </div>
+              <ChevronDown size={16} />
+            </button>
+            {accountOpen && (
+              <div className="studioAccountMenu" role="menu">
+                <p>{user.email}</p>
+                <button role="menuitem" onClick={logout}>
+                  <LogOut size={16} />
+                  退出登录
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+        <div className="studioBody">
+          {error && (
+            <div className="studioError">
+              <CircleAlert /> {error}
+              <button onClick={() => setError('')}>
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          {activeView}
         </div>
-      </header>
-      <div className="studioBody">{error && <div className="studioError"><CircleAlert/> {error}<button onClick={() => setError('')}><X size={16}/></button></div>}{activeView}</div>
-    </section>
-    <StudioToast toast={toast} onDismiss={() => setToast(null)}/>
-    {['category', 'tag'].includes(editor?.kind) && <TaxonomyEditor type={editor.kind} item={editor.item} saving={saving} onClose={() => setEditor(null)} onSave={saveTaxonomy} onDelete={item => requestRemove(editor.kind, item)}/>}
-    {editor?.kind === 'tool' && <ToolEditor tool={editor.item} saving={saving} onClose={() => setEditor(null)} onSave={saveTool} onDelete={item => requestRemove('tool', item)}/>}
-    {deleting && <Modal title="确认删除" onClose={() => setDeleting(null)} actions={<><button className="secondaryButton" onClick={() => setDeleting(null)}>取消</button><button className="dangerButton" disabled={saving} onClick={remove}>{saving ? '删除中…' : '确认删除'}</button></>}><p>将软删除「{deleting.item.name || deleting.item.title}」。它不会再对外展示。</p></Modal>}
-  </main>;
+      </section>
+      <StudioToast toast={toast} onDismiss={() => setToast(null)} />
+      {['category', 'tag'].includes(editor?.kind) && (
+        <TaxonomyEditor
+          type={editor.kind}
+          item={editor.item}
+          saving={saving}
+          onClose={() => setEditor(null)}
+          onSave={saveTaxonomy}
+          onDelete={(item) => requestRemove(editor.kind, item)}
+        />
+      )}
+      {editor?.kind === 'tool' && (
+        <ToolEditor
+          tool={editor.item}
+          saving={saving}
+          onClose={() => setEditor(null)}
+          onSave={saveTool}
+          onDelete={(item) => requestRemove('tool', item)}
+        />
+      )}
+      {deleting && (
+        <Modal
+          title="确认删除"
+          onClose={() => setDeleting(null)}
+          actions={
+            <>
+              <button className="secondaryButton" onClick={() => setDeleting(null)}>
+                取消
+              </button>
+              <button className="dangerButton" disabled={saving} onClick={remove}>
+                {saving ? '删除中…' : '确认删除'}
+              </button>
+            </>
+          }
+        >
+          <p>将软删除「{deleting.item.name || deleting.item.title}」。它不会再对外展示。</p>
+        </Modal>
+      )}
+    </main>
+  );
 }

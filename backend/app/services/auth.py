@@ -3,17 +3,25 @@ from __future__ import annotations
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.core.security import hash_identifier, hash_password, verify_password
+from app.core.security import (
+    hash_identifier,
+    hash_password,
+    hash_session_token,
+    verify_password,
+)
 from app.models.core import User, UserSession
 from app.models.supplemental import EmailVerificationToken, LoginLog
 
 SESSION_TTL = timedelta(days=14)
 LOGIN_FAILURE_LIMIT = 5
 LOGIN_LOCK_DURATION = timedelta(minutes=15)
+# Writing last_seen_at on every request costs an UPDATE per call; a coarse
+# heartbeat is enough for session auditing.
+LAST_SEEN_RESOLUTION = timedelta(minutes=5)
 # A valid Argon2id value keeps the failure path constant-time for unknown
 # accounts, preventing an email-existence timing oracle.
 _DUMMY_PASSWORD_HASH = hash_password("mmcat-invalid-password-placeholder")
@@ -33,6 +41,9 @@ async def register_member(
     normalized_email = email.strip().lower()
     existing = await session.scalar(select(User).where(User.email == normalized_email))
     if existing is not None:
+        # Spend the same Argon2 cost as a fresh registration so response time
+        # does not reveal whether the address is already registered.
+        hash_password(password)
         # A repeat registration for an unverified address acts as a throttled
         # resend without disclosing whether an account already exists.
         if existing.isvalid and existing.status == "pending_verification":
@@ -112,11 +123,19 @@ async def login(
     )
     password_ok = verify_password(password, user.password_hash if user else _DUMMY_PASSWORD_HASH)
     now = _now()
+    if user is not None and user.locked_until is not None and user.locked_until <= now:
+        # An expired lock starts a fresh counting window; otherwise every later
+        # typo would immediately re-lock the account.
+        user.locked_until = None
+        user.failed_login_count = 0
+    locked = user is not None and user.locked_until is not None
     if user is None or not password_ok:
         if user is not None:
-            user.failed_login_count += 1
-            if user.failed_login_count >= LOGIN_FAILURE_LIMIT:
-                user.locked_until = now + LOGIN_LOCK_DURATION
+            if not locked:
+                # Attempts made during a lock must not extend it indefinitely.
+                user.failed_login_count += 1
+                if user.failed_login_count >= LOGIN_FAILURE_LIMIT:
+                    user.locked_until = now + LOGIN_LOCK_DURATION
             session.add(
                 LoginLog(
                     user_id=user.id,
@@ -130,7 +149,7 @@ async def login(
             )
             await session.commit()
         raise AppError("LOGIN_FAILED", "邮箱或密码错误。", 401)
-    if user.status != "active" or (user.locked_until is not None and user.locked_until > now):
+    if user.status != "active" or locked:
         session.add(
             LoginLog(
                 user_id=user.id,
@@ -150,8 +169,8 @@ async def login(
     raw_token, csrf_token = _new_token(), _new_token()
     active_session = UserSession(
         user_id=user.id,
-        token_hash=hash_identifier(raw_token),
-        csrf_secret_hash=hash_identifier(csrf_token),
+        token_hash=hash_session_token(raw_token),
+        csrf_secret_hash=hash_session_token(csrf_token),
         ip_address=ip_hash,
         user_agent=user_agent_hash,
         expires_at=now + SESSION_TTL,
@@ -175,7 +194,7 @@ async def login(
 async def current_session(session: AsyncSession, raw_token: str | None) -> tuple[User, UserSession]:
     if not raw_token:
         raise AppError("AUTH_REQUIRED", "请先登录。", 401)
-    token_hash = hash_identifier(raw_token)
+    token_hash = hash_session_token(raw_token)
     row = await session.execute(
         select(User, UserSession)
         .join(User, User.id == UserSession.user_id)
@@ -186,14 +205,21 @@ async def current_session(session: AsyncSession, raw_token: str | None) -> tuple
             UserSession.expires_at > _now(),
             User.isvalid.is_(True),
             User.status == "active",
-            or_(User.locked_until.is_(None), User.locked_until <= _now()),
+            # `locked_until` only throttles password guessing at login.  It must
+            # not invalidate sessions that are already authenticated, or anyone
+            # who knows an email address could sign its owner out at will.
         )
     )
     item = row.first()
     if item is None:
         raise AppError("AUTH_REQUIRED", "登录已过期，请重新登录。", 401)
     user, active_session = item
-    active_session.last_seen_at = _now()
+    now = _now()
+    if active_session.last_seen_at is None or now - active_session.last_seen_at > LAST_SEEN_RESOLUTION:
+        active_session.last_seen_at = now
+        # Persist the heartbeat here: read-only endpoints never commit, so the
+        # pending UPDATE would otherwise be flushed and rolled back every time.
+        await session.commit()
     return user, active_session
 
 
@@ -213,6 +239,6 @@ async def revoke_all_user_sessions(session: AsyncSession, user_id: object) -> No
 
 def verify_csrf(raw_csrf: str | None, active_session: UserSession) -> None:
     if not raw_csrf or not secrets.compare_digest(
-        hash_identifier(raw_csrf), active_session.csrf_secret_hash
+        hash_session_token(raw_csrf), active_session.csrf_secret_hash
     ):
         raise AppError("CSRF_INVALID", "请求校验失败，请刷新页面后重试。", 403)
