@@ -18,19 +18,29 @@ import {
   MessageSquare,
   Menu,
   Smile,
+  Heart,
+  SlidersHorizontal,
+  MoreHorizontal,
+  X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
+import { createPortal } from 'react-dom';
 import brandLogo from './assets/cats-world-logo-ocean.webp';
 import heroWorkspace from './assets/hero-workspace.webp';
+import heroWorkspaceMobile from './assets/hero-workspace-mobile.webp';
 import heroLight from './assets/hero-light-same-cat-daylight.webp';
-import { AuthScreen, VerifyEmailScreen } from './auth';
+import heroLightMobile from './assets/hero-light-same-cat-daylight-mobile.webp';
 import { ApiError, authApi, contentApi, rssFeedUrl } from './api/client';
-import hljs from 'highlight.js/lib/common';
-import DOMPurify from 'dompurify';
 import './style.css';
 import './mobile.css';
+import './feed.css';
+import './image-preview.css';
 
 const StudioApp = React.lazy(() => import('./studio').then((module) => ({ default: module.StudioApp })));
+const AuthScreen = React.lazy(() => import('./auth').then((module) => ({ default: module.AuthScreen })));
+const VerifyEmailScreen = React.lazy(() => import('./auth').then((module) => ({ default: module.VerifyEmailScreen })));
 
 const nav = [
   ['首页', '/'],
@@ -38,6 +48,7 @@ const nav = [
   ['故障档案', '/posts?q=故障'],
   ['实验室', '/posts?q=实践'],
   ['图库', '/photos'],
+  ['动态', '/feed'],
   ['关于', '/posts'],
 ];
 const Arrow = () => <ArrowRight className="arrow" size={16} />;
@@ -64,7 +75,7 @@ function HeaderMenuEntries({ items, parentId = null, go, depth = 0 }) {
                 className={(depth === 0 ? '' : 'subNavLink') + (item.label === 'AI Lab' ? ' labNav' : '')}
                 onClick={item.url.startsWith('/') ? (event) => go(event, item.url) : undefined}
               >
-                <NavIcon name={item.iconKey || item.label} />
+                <NavIcon name={item.url === '/feed' ? '动态' : item.iconKey || item.label} />
                 <span>{item.label}</span>
                 {children && <small>⌄</small>}
               </a>
@@ -224,6 +235,8 @@ function HeaderSearch({ navigate }) {
         onKeyDown={onKeyDown}
         placeholder="搜索文章、标签、问题..."
         aria-label="搜索文章、标签、问题"
+        role="combobox"
+        aria-autocomplete="list"
         aria-expanded={open}
         aria-controls="header-search-panel"
         autoComplete="off"
@@ -313,6 +326,8 @@ function Header({ lightsOn, onToggle, onStudio, navigate, navigation = [], user 
   };
   const items = navigation.filter((item) => item.location === 'header');
   const menuItems = items.length ? items : nav.map(([label, url]) => ({ label, url, iconKey: label, openNewTab: false, parentId: null }));
+  if (!menuItems.some((item) => item.url === '/feed'))
+    menuItems.push({ label: '动态', url: '/feed', iconKey: '动态', openNewTab: false, parentId: null });
   return (
     <header className="siteHeader">
       <div className="wrap nav">
@@ -393,9 +408,11 @@ function AnimatedCount({ value, suffix = '' }) {
   );
 }
 function Hero({ lightsOn, postCount, siteViewCount, navigate }) {
+  const heroImage = lightsOn ? heroLight : heroWorkspace;
+  const mobileHeroImage = lightsOn ? heroLightMobile : heroWorkspaceMobile;
   return (
     <section className="hero">
-      <div className="heroArt" style={{ backgroundImage: `url(${lightsOn ? heroLight : heroWorkspace})` }} />
+      <div className="heroArt" style={{ '--hero-image': `url(${heroImage})`, '--hero-image-mobile': `url(${mobileHeroImage})` }} />
       <div className="wash" />
       <div className="wrap heroText">
         <p className="eyebrow">//　用 AI 解决真实问题</p>
@@ -440,67 +457,56 @@ function Hero({ lightsOn, postCount, siteViewCount, navigate }) {
   );
 }
 const officialBrandIcons = {
-  ChatGPT: ['https://api.iconify.design/logos:openai-icon.svg', 'mono'],
-  Claude: ['https://api.iconify.design/simple-icons:claude.svg?color=%23e9784f', 'color'],
-  Gemini: ['https://api.iconify.design/logos:google-gemini-icon.svg', 'color'],
-  Cursor: ['https://api.iconify.design/logos:cursor-icon.svg', 'mono'],
-  Copilot: ['https://api.iconify.design/logos:github-copilot.svg', 'mono'],
+  ChatGPT: ['/icons/brand-openai.svg', 'mono'],
+  Claude: ['/icons/brand-claude.svg', 'color'],
+  Gemini: ['/icons/brand-gemini.svg', 'color'],
+  Cursor: ['/icons/brand-cursor.svg', 'mono'],
+  Copilot: ['/icons/brand-copilot.svg', 'mono'],
 };
 const iconifyToolIcons = {
-  文档总结: 'https://api.iconify.design/ix:document-ai.svg?color=%2354d8ff',
-  代码解释: 'https://api.iconify.design/tabler:code-ai.svg?color=%2335e1ad',
-  Prompt: 'https://api.iconify.design/streamline:ai-prompt-spark.svg?color=%23d16dff',
-  图像生成: 'https://api.iconify.design/streamline:ai-generate-portrait-image-spark.svg?color=%23f4f7fb',
+  文档总结: '/icons/tool-document-ai.svg',
+  代码解释: '/icons/tool-code-ai.svg',
+  Prompt: '/icons/tool-prompt.svg',
+  图像生成: '/icons/tool-image.svg',
 };
 const iconifyCategoryIcons = {
-  'AI 解决方案': 'https://api.iconify.design/tabler:ai.svg?color=%23e766eb',
-  Linux: 'https://api.iconify.design/logos:linux-tux.svg',
-  网络: 'https://api.iconify.design/tabler:network.svg?color=%2333c5ef',
-  '容器 & 云': 'https://api.iconify.design/logos:docker-icon.svg',
-  数据库: 'https://api.iconify.design/tabler:database.svg?color=%236d89ff',
-  安全: 'https://api.iconify.design/tabler:shield-check.svg?color=%235ce9b8',
-  开发: 'https://api.iconify.design/tabler:code.svg?color=%23d66cf4',
-  随笔: 'https://api.iconify.design/tabler:note.svg?color=%23ffbc4d',
+  'AI 解决方案': '/icons/category-ai.svg',
+  Linux: '/icons/category-linux.svg',
+  网络: '/icons/category-network.svg',
+  '容器 & 云': '/icons/category-container.svg',
+  数据库: '/icons/category-database.svg',
+  安全: '/icons/category-security.svg',
+  开发: '/icons/category-code.svg',
+  随笔: '/icons/category-note.svg',
 };
 Object.assign(iconifyCategoryIcons, {
-  编程: 'https://api.iconify.design/tabler:code.svg?color=%23d66cf4',
-  资讯: 'https://api.iconify.design/tabler:bulb.svg?color=%23ffbc4d',
-  软件: 'https://api.iconify.design/tabler:apps.svg?color=%236d89ff',
-  运维: 'https://api.iconify.design/tabler:server-cog.svg?color=%235ce9b8',
+  编程: '/icons/category-code.svg',
+  资讯: '/icons/category-bulb.svg',
+  软件: '/icons/category-apps.svg',
+  运维: '/icons/category-server-cog.svg',
 });
 const iconifySectionIcons = {
-  status: 'https://api.iconify.design/tabler:bolt.svg?color=%2338e5ad',
-  latest: 'https://api.iconify.design/tabler:file-ai.svg?color=%2335c7f6',
-  tools: 'https://api.iconify.design/tabler:ai.svg?color=%23df6ce6',
-  tags: 'https://api.iconify.design/tabler:tags.svg?color=%23e6f3fc',
+  status: '/icons/section-status.svg',
+  latest: '/icons/section-latest.svg',
+  tools: '/icons/section-tools.svg',
+  tags: '/icons/section-tags.svg',
 };
 const iconifyNavIcons = {
-  首页: 'https://api.iconify.design/tabler:home.svg?color=%2349bdff',
-  'AI Lab': 'https://api.iconify.design/tabler:sparkles.svg?color=%23ca68f0',
-  故障档案: 'https://api.iconify.design/tabler:archive.svg?color=%23b8c9d9',
-  实验室: 'https://api.iconify.design/tabler:flask.svg?color=%23b8c9d9',
-  图库: 'https://api.iconify.design/tabler:photo.svg?color=%23b8c9d9',
-  关于: 'https://api.iconify.design/tabler:help-circle.svg?color=%23b8c9d9',
+  首页: '/icons/nav-home.svg',
+  'AI Lab': '/icons/nav-ai-lab.svg',
+  故障档案: '/icons/nav-archive.svg',
+  实验室: '/icons/nav-flask.svg',
+  图库: '/icons/nav-photo.svg',
+  动态: '/icons/nav-activity.svg',
+  关于: '/icons/nav-help.svg',
 };
 function NavIcon({ name }) {
-  return (
-    <img
-      className="navIcon"
-      src={iconifyNavIcons[name] || 'https://api.iconify.design/tabler:link.svg?color=%23b8c9d9'}
-      alt=""
-      aria-hidden="true"
-    />
-  );
+  return <img className="navIcon" src={iconifyNavIcons[name] || '/icons/nav-link.svg'} alt="" aria-hidden="true" />;
 }
 function CategoryIcon({ name }) {
   const variant = name === 'Linux' ? ' is-linux' : name === '容器 & 云' ? ' is-container' : '';
   return (
-    <img
-      className={`categoryIcon${variant}`}
-      src={iconifyCategoryIcons[name] || 'https://api.iconify.design/tabler:folder.svg?color=%2333c5ef'}
-      alt=""
-      aria-hidden="true"
-    />
+    <img className={`categoryIcon${variant}`} src={iconifyCategoryIcons[name] || '/icons/category-folder.svg'} alt="" aria-hidden="true" />
   );
 }
 function SectionIcon({ name }) {
@@ -513,11 +519,16 @@ function ToolIcon({ name }) {
   const common = { viewBox: '0 0 48 48', 'aria-hidden': 'true' };
   return <ImageIcon {...common} strokeWidth="2.45" />;
 }
-function Categories({ categories = [], navigate }) {
+// Placeholders keep the home layout at its final size while /home loads, so the
+// sections below do not jump when data arrives (Lighthouse measured CLS 0.13).
+const skeletonKeys = (count) => Array.from({ length: count }, (_, index) => `skeleton-${index}`);
+function Categories({ categories = [], loading = false, navigate }) {
   return (
     <section className="categoryArea">
       <div className="cats">
-        {categories.length ? (
+        {loading ? (
+          skeletonKeys(8).map((key) => <span className="catCard isSkeleton" aria-hidden="true" key={key} />)
+        ) : categories.length ? (
           categories.map((item, i) => (
             <button
               onClick={() => navigate(`/posts?category=${encodeURIComponent(item.slug)}`)}
@@ -538,19 +549,24 @@ function Categories({ categories = [], navigate }) {
     </section>
   );
 }
+// Cards are real links: crawlers, assistive tech and AI agents see an <a href>,
+// middle/cmd-click opens a new tab, and a plain click stays a client-side navigation.
+function navigateOnPlainClick(event, navigate, to) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  navigate(to);
+}
 function Post({ p, index, navigate }) {
   const category = p.categories?.[0] || '未分类';
   const tags = (p.tags || []).slice(0, 3);
   return (
-    <article
+    <a
       className="post postLink"
-      tabIndex="0"
-      role="link"
-      onClick={() => navigate(`/archives/${encodeURIComponent(p.slug)}`)}
-      onKeyDown={(event) => event.key === 'Enter' && navigate(`/archives/${encodeURIComponent(p.slug)}`)}
+      href={`/archives/${encodeURIComponent(p.slug)}`}
+      onClick={(event) => navigateOnPlainClick(event, navigate, `/archives/${encodeURIComponent(p.slug)}`)}
     >
       <div className={'cover ' + ['violet', 'blue', 'cyan', 'red', 'navy', 'indigo'][index % 6]}>
-        {p.coverUrl && <img className="coverImage" src={p.coverUrl} alt="" />}
+        {p.coverUrl && <img className="coverImage" src={p.thumbnailUrl || p.coverUrl} alt="" loading="lazy" decoding="async" />}
         <b className="coverBadge">{category}</b>
         {!p.coverUrl && (
           <div className="screen">
@@ -581,7 +597,7 @@ function Post({ p, index, navigate }) {
           <MessageSquare /> {p.commentCount || 0}
         </span>
       </footer>
-    </article>
+    </a>
   );
 }
 function statusSummary(statusNodes) {
@@ -687,16 +703,70 @@ function Side({ statusNodes = [], tags = [], tools = [], navigate }) {
     </aside>
   );
 }
-function Main({ home, navigate }) {
+function HomeFeed({ items = [], loading = false, navigate }) {
+  if (!items.length && !loading) return null;
+  return (
+    <section className="homeFeed" aria-labelledby="home-feed-heading">
+      <div className="heading homeFeedHeading">
+        <h2 id="home-feed-heading">
+          <SectionIcon name="latest" />
+          最新动态
+        </h2>
+        <a
+          href="/feed"
+          onClick={(event) => {
+            event.preventDefault();
+            navigate('/feed');
+          }}
+        >
+          查看全部 <Arrow />
+        </a>
+      </div>
+      <div className="feedGrid">
+        {loading &&
+          skeletonKeys(3).map((key) => (
+            <span className="feedCard isSkeleton" aria-hidden="true" key={key}>
+              <span className="feedCardMedia" />
+              <span className="feedCardBody">
+                <i />
+                <i />
+              </span>
+            </span>
+          ))}
+        {items.map((item) => (
+          <button className="feedCard" key={item.id} onClick={() => navigate(`/feed?id=${encodeURIComponent(item.id)}`)}>
+            <span className={'feedCardMedia' + (item.imageUrl ? '' : ' isEmpty')}>
+              {item.imageUrl ? (
+                <img src={item.thumbnailUrl || item.imageUrl} alt="" loading="lazy" decoding="async" />
+              ) : (
+                <span aria-hidden="true">{(item.category || '动态').slice(0, 2)}</span>
+              )}
+            </span>
+            <span className="feedCardBody">
+              <span className="feedCardMeta">
+                {item.category && <em>{item.category}</em>}
+                <time dateTime={item.publishedAt}>{feedRelativeTime(item.publishedAt)}</time>
+              </span>
+              <b>{item.title}</b>
+              {item.kicker && <small>{item.kicker}</small>}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+function Main({ home, loading = false, navigate }) {
   const items = home?.posts || [];
   return (
     <main className="wrap main">
       <section className="homePrimary">
-        <Categories categories={home?.homeCategories || home?.categories} navigate={navigate} />
+        <Categories categories={home?.homeCategories || home?.categories} loading={loading} navigate={navigate} />
+        <HomeFeed items={home?.feedPosts} loading={loading} navigate={navigate} />
         <div className="heading">
           <h2>
             <SectionIcon name="latest" />
-            最新 AI 解决方案
+            精选解决方案
           </h2>
           <a
             href="/posts"
@@ -708,7 +778,13 @@ function Main({ home, navigate }) {
             查看全部 <Arrow />
           </a>
         </div>
-        {items.length ? (
+        {loading ? (
+          <div className="posts" aria-busy="true">
+            {skeletonKeys(6).map((key) => (
+              <article className="post isSkeleton" aria-hidden="true" key={key} />
+            ))}
+          </div>
+        ) : items.length ? (
           <div className="posts">
             {items.map((item, index) => (
               <Post p={item} index={index} navigate={navigate} key={item.id} />
@@ -793,7 +869,7 @@ function Footer({ navigation = [], navigate }) {
             aria-label="GitHub：cat-s-world"
             title="查看 GitHub 仓库"
           >
-            <img className="footerGithub" src="https://api.iconify.design/tabler:brand-github.svg?color=%239ab7cb" alt="GitHub" />
+            <img className="footerGithub" src="/icons/footer-github.svg" alt="GitHub" />
           </a>
           <a href={rssFeedUrl} aria-label="订阅 RSS" title="订阅 RSS">
             <Rss />
@@ -897,12 +973,10 @@ function ListRow({ post, navigate }) {
   const date = post.publishedAt ? new Date(post.publishedAt) : null;
   const tags = (post.tags || []).slice(0, 3);
   return (
-    <article
+    <a
       className="listRow"
-      role="link"
-      tabIndex="0"
-      onClick={() => navigate(`/archives/${encodeURIComponent(post.slug)}`)}
-      onKeyDown={(event) => event.key === 'Enter' && navigate(`/archives/${encodeURIComponent(post.slug)}`)}
+      href={`/archives/${encodeURIComponent(post.slug)}`}
+      onClick={(event) => navigateOnPlainClick(event, navigate, `/archives/${encodeURIComponent(post.slug)}`)}
     >
       <time>
         {date ? (
@@ -934,13 +1008,13 @@ function ListRow({ post, navigate }) {
         </div>
       </div>
       {post.coverUrl ? (
-        <img src={post.coverUrl} alt="" />
+        <img src={post.thumbnailUrl || post.coverUrl} alt="" loading="lazy" decoding="async" />
       ) : (
         <div className="listNoCover">
           <FileText size={24} />
         </div>
       )}
-    </article>
+    </a>
   );
 }
 function PublicSidebar({ home, navigate }) {
@@ -1178,11 +1252,37 @@ function tableCells(line) {
 function isTableDivider(line) {
   return tableCells(line).every((cell) => /^:?-{3,}:?$/.test(cell));
 }
+let highlighterPromise;
+function loadHighlighter() {
+  highlighterPromise ||= import('highlight.js/lib/common').then((module) => module.default);
+  return highlighterPromise;
+}
 const HighlightedCode = React.memo(function HighlightedCode({ code, language }) {
-  const selected = useMemo(
-    () => (language && hljs.getLanguage(language) ? hljs.highlight(code, { language }).value : hljs.highlightAuto(code).value),
-    [code, language],
-  );
+  const [selected, setSelected] = useState(null);
+  useEffect(() => {
+    let active = true;
+    setSelected(null);
+    loadHighlighter()
+      .then((highlighter) => {
+        if (!active) return;
+        setSelected(
+          language && highlighter.getLanguage(language)
+            ? highlighter.highlight(code, { language }).value
+            : highlighter.highlightAuto(code).value,
+        );
+      })
+      .catch(() => active && setSelected(''));
+    return () => {
+      active = false;
+    };
+  }, [code, language]);
+  if (selected === null || selected === '') {
+    return (
+      <pre>
+        <code className="hljs">{code}</code>
+      </pre>
+    );
+  }
   return (
     <pre>
       <code className="hljs" dangerouslySetInnerHTML={{ __html: selected }} />
@@ -1190,6 +1290,115 @@ const HighlightedCode = React.memo(function HighlightedCode({ code, language }) 
   );
 });
 const NO_HEADINGS = [];
+function ContentImagePreview({ images, index, onClose, onChange }) {
+  const closeButton = useRef(null);
+  const indexRef = useRef(index);
+  indexRef.current = index;
+  const image = images[index];
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement;
+    document.body.style.overflow = 'hidden';
+    closeButton.current?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+      if (event.key === 'ArrowLeft' && indexRef.current > 0) onChange(indexRef.current - 1);
+      if (event.key === 'ArrowRight' && indexRef.current < images.length - 1) onChange(indexRef.current + 1);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+      previousFocus?.focus?.();
+    };
+  }, [images.length, onChange, onClose]);
+
+  if (!image) return null;
+  return createPortal(
+    <div className="contentImagePreview" role="dialog" aria-modal="true" aria-label="图片预览" onClick={onClose}>
+      <div className="contentImagePreviewToolbar">
+        <span>{images.length > 1 ? `${index + 1} / ${images.length}` : '图片预览'}</span>
+        <button ref={closeButton} type="button" aria-label="关闭图片预览" onClick={onClose}>
+          <X size={23} />
+        </button>
+      </div>
+      {images.length > 1 && (
+        <button
+          className="contentImagePreviewArrow previous"
+          type="button"
+          aria-label="上一张图片"
+          disabled={index === 0}
+          onClick={(event) => {
+            event.stopPropagation();
+            onChange(index - 1);
+          }}
+        >
+          <ChevronLeft size={30} />
+        </button>
+      )}
+      <figure onClick={(event) => event.stopPropagation()}>
+        <img src={image.src} alt={image.alt || '预览图片'} />
+        {image.alt && <figcaption>{image.alt}</figcaption>}
+      </figure>
+      {images.length > 1 && (
+        <button
+          className="contentImagePreviewArrow next"
+          type="button"
+          aria-label="下一张图片"
+          disabled={index === images.length - 1}
+          onClick={(event) => {
+            event.stopPropagation();
+            onChange(index + 1);
+          }}
+        >
+          <ChevronRight size={30} />
+        </button>
+      )}
+    </div>,
+    document.body,
+  );
+}
+function PreviewableBody({ children, html }) {
+  const bodyRef = useRef(null);
+  const [preview, setPreview] = useState(null);
+  const closePreview = useCallback(() => setPreview(null), []);
+  const changePreview = useCallback((index) => setPreview((current) => current && { ...current, index }), []);
+
+  useEffect(() => {
+    bodyRef.current?.querySelectorAll('img').forEach((image) => {
+      image.tabIndex = 0;
+      image.setAttribute('role', 'button');
+      image.setAttribute('aria-label', image.alt ? `预览图片：${image.alt}` : '预览图片');
+    });
+  }, [children, html]);
+
+  const openPreview = (event) => {
+    const image = event.target.closest?.('img');
+    if (!image || !bodyRef.current?.contains(image)) return;
+    event.preventDefault();
+    const images = [...bodyRef.current.querySelectorAll('img')]
+      .map((node) => ({ node, src: node.currentSrc || node.src, alt: node.alt }))
+      .filter((item) => item.src);
+    const index = images.findIndex((item) => item.node === image);
+    if (index >= 0) setPreview({ images: images.map(({ src, alt }) => ({ src, alt })), index });
+  };
+
+  return (
+    <>
+      <div
+        ref={bodyRef}
+        className={'articleBody previewableBody' + (html == null ? '' : ' htmlArticleBody')}
+        onClick={openPreview}
+        onKeyDown={(event) => {
+          if ((event.key === 'Enter' || event.key === ' ') && event.target.tagName === 'IMG') openPreview(event);
+        }}
+        {...(html == null ? { children } : { dangerouslySetInnerHTML: { __html: html } })}
+      />
+      {preview && <ContentImagePreview images={preview.images} index={preview.index} onClose={closePreview} onChange={changePreview} />}
+    </>
+  );
+}
 const MarkdownBody = React.memo(function MarkdownBody({ content, headings = NO_HEADINGS }) {
   const lines = contentText(content).replace(/\r\n/g, '\n').split('\n');
   const blocks = [];
@@ -1298,7 +1507,7 @@ const MarkdownBody = React.memo(function MarkdownBody({ content, headings = NO_H
       </p>,
     );
   }
-  return <div className="articleBody">{blocks}</div>;
+  return <PreviewableBody>{blocks}</PreviewableBody>;
 });
 const HTML_SANITIZE_OPTIONS = {
   ALLOWED_TAGS: [
@@ -1338,18 +1547,34 @@ const HTML_SANITIZE_OPTIONS = {
   ALLOW_DATA_ATTR: false,
   RETURN_DOM: true,
 };
-function sanitizedHtml(content, headings = NO_HEADINGS) {
+function sanitizedHtml(sanitizer, content, headings = NO_HEADINGS) {
   // The API sanitizes rich text when it is saved; this second pass protects
   // against legacy rows and anything written before that rule existed.
-  const body = DOMPurify.sanitize(contentText(content), HTML_SANITIZE_OPTIONS);
+  const body = sanitizer.sanitize(contentText(content), HTML_SANITIZE_OPTIONS);
   [...body.querySelectorAll('h2,h3,h4,h5,h6')].forEach((node, index) => {
     if (headings[index]) node.id = headings[index].id;
   });
   return body.innerHTML;
 }
+let sanitizerPromise;
+function loadSanitizer() {
+  sanitizerPromise ||= import('dompurify').then((module) => module.default);
+  return sanitizerPromise;
+}
 const HtmlBody = React.memo(function HtmlBody({ content, headings = NO_HEADINGS }) {
-  const html = useMemo(() => sanitizedHtml(content, headings), [content, headings]);
-  return <div className="articleBody htmlArticleBody" dangerouslySetInnerHTML={{ __html: html }} />;
+  const [html, setHtml] = useState(null);
+  useEffect(() => {
+    let active = true;
+    setHtml(null);
+    loadSanitizer()
+      .then((sanitizer) => active && setHtml(sanitizedHtml(sanitizer, content, headings)))
+      .catch(() => active && setHtml(''));
+    return () => {
+      active = false;
+    };
+  }, [content, headings]);
+  if (html === null) return <div className="articleBody" aria-busy="true" />;
+  return <PreviewableBody html={html} />;
 });
 function commentThreadCount(comment) {
   return 1 + (comment.replies || []).reduce((total, reply) => total + commentThreadCount(reply), 0);
@@ -1877,7 +2102,7 @@ function GalleriesScreen({ lightsOn, onToggle, navigate }) {
             {state.items.map((item) => (
               <button className="listRow" onClick={() => navigate(`/photos/${encodeURIComponent(item.slug)}`)} key={item.id}>
                 {item.coverUrl ? (
-                  <img src={item.coverUrl} alt="" />
+                  <img src={item.thumbnailUrl || item.coverUrl} alt="" loading="lazy" decoding="async" />
                 ) : (
                   <div className="listNoCover">
                     <ImageIcon />
@@ -2057,7 +2282,7 @@ function GalleryScreen({ slug, lightsOn, onToggle, navigate }) {
               {state.items.map((item, index) => (
                 <button type="button" className="photoTile" onClick={() => setLightboxIndex(index)} key={item.id}>
                   {item.mimeType?.startsWith('image/') ? (
-                    <img src={item.url} alt={item.alt || item.title || item.name || ''} loading="lazy" decoding="async" />
+                    <img src={item.thumbnailUrl || item.url} alt={item.alt || item.title || item.name || ''} loading="lazy" decoding="async" />
                   ) : (
                     <span className="photoTileFallback">
                       <ImageIcon size={32} />
@@ -2088,6 +2313,310 @@ function GalleryScreen({ slug, lightsOn, onToggle, navigate }) {
     </PublicShell>
   );
 }
+function feedRelativeTime(value) {
+  const seconds = Math.round((new Date(value).getTime() - Date.now()) / 1000);
+  const absolute = Math.abs(seconds);
+  const [amount, unit] =
+    absolute < 60
+      ? [seconds, 'second']
+      : absolute < 3600
+        ? [Math.round(seconds / 60), 'minute']
+        : absolute < 86400
+          ? [Math.round(seconds / 3600), 'hour']
+          : absolute < 604800
+            ? [Math.round(seconds / 86400), 'day']
+            : [Math.round(seconds / 604800), 'week'];
+  return new Intl.RelativeTimeFormat('zh-CN', { numeric: 'auto' }).format(amount, unit);
+}
+
+function feedIcon(category) {
+  if (/安全|漏洞|CVE/i.test(category)) return '📋';
+  if (/容器|Docker|云/i.test(category)) return '📦';
+  if (/AI|模型/i.test(category)) return '✨';
+  if (/开发|代码/i.test(category)) return '✏️';
+  return '📝';
+}
+
+let markdownParserPromise;
+function loadMarkdownParser() {
+  markdownParserPromise ||= import('marked').then((module) => module.marked);
+  return markdownParserPromise;
+}
+function MarkedFeedBody({ content }) {
+  const [html, setHtml] = useState(null);
+  useEffect(() => {
+    let active = true;
+    setHtml(null);
+    loadMarkdownParser()
+      .then((parser) => active && setHtml(parser.parse(content || '')))
+      .catch(() => active && setHtml(''));
+    return () => {
+      active = false;
+    };
+  }, [content]);
+  return (
+    <div className="feedBody" aria-busy={html === null}>
+      {html === null ? null : <HtmlBody content={html} />}
+    </div>
+  );
+}
+
+function FeedScreen({ lightsOn, onToggle, navigate }) {
+  const requestedFeedId = new URLSearchParams(window.location.search).get('id');
+  const [items, setItems] = useState([]);
+  const [meta, setMeta] = useState({ total: 0, totalPages: 0, categories: [] });
+  const [page, setPage] = useState(1);
+  const [category, setCategory] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentBody, setCommentBody] = useState('');
+  const [commentNotice, setCommentNotice] = useState('');
+  const [sending, setSending] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(null);
+  const [copyNotice, setCopyNotice] = useState('');
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    setError('');
+    contentApi
+      .feedPosts({ category, page: 1, pageSize: 20 })
+      .then((result) => {
+        if (!live) return;
+        setItems(result.data || []);
+        setMeta(result.meta || {});
+        setPage(1);
+      })
+      .catch((reason) => live && setError(reason.message || '动态暂时无法加载。'))
+      .finally(() => live && setLoading(false));
+    return () => {
+      live = false;
+    };
+  }, [category]);
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const result = await contentApi.feedPosts({ category, page: page + 1, pageSize: 20 });
+      setItems((current) => [...current, ...(result.data || [])]);
+      setMeta(result.meta || {});
+      setPage(page + 1);
+    } catch (reason) {
+      setError(reason.message || '加载更多失败。');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+  const requireLogin = (reason) => {
+    if (reason?.status === 401 || reason?.status === 403) {
+      navigate(`/login?returnTo=${encodeURIComponent('/feed')}`);
+      return true;
+    }
+    return false;
+  };
+  const toggleLike = async (item) => {
+    try {
+      const result = await contentApi.toggleFeedLike(item.id);
+      setItems((current) =>
+        current.map((row) => (row.id === item.id ? { ...row, likedByMe: result.data.liked, likeCount: result.data.count } : row)),
+      );
+    } catch (reason) {
+      if (!requireLogin(reason)) setError(reason.message || '点赞失败。');
+    }
+  };
+  const openComments = async (item) => {
+    if (expanded === item.id) {
+      setExpanded(null);
+      return;
+    }
+    setExpanded(item.id);
+    setComments([]);
+    setCommentBody('');
+    setCommentNotice('');
+    try {
+      const result = await contentApi.feedComments(item.id);
+      setComments(result.data || []);
+    } catch (reason) {
+      setCommentNotice(reason.message || '讨论暂时无法加载。');
+    }
+  };
+  const submitComment = async (item) => {
+    if (!commentBody.trim()) return;
+    setSending(true);
+    setCommentNotice('');
+    try {
+      const result = await contentApi.createFeedComment(item.id, { body: commentBody.trim() });
+      if (result.data.status === 'approved') {
+        setComments((current) => [...current, result.data]);
+        setItems((current) => current.map((row) => (row.id === item.id ? { ...row, commentCount: row.commentCount + 1 } : row)));
+        setCommentNotice('评论已发布。');
+      } else setCommentNotice('评论已提交，审核通过后会显示。');
+      setCommentBody('');
+    } catch (reason) {
+      if (!requireLogin(reason)) setCommentNotice(reason.message || '评论提交失败。');
+    } finally {
+      setSending(false);
+    }
+  };
+  const copyLink = async (item) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/feed?id=${encodeURIComponent(item.id)}`);
+      setCopyNotice(item.id);
+      setMoreOpen(null);
+    } catch {
+      setCopyNotice('error');
+    }
+  };
+  useEffect(() => {
+    if (!requestedFeedId || !items.some((item) => item.id === requestedFeedId)) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`feed-${requestedFeedId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [items, requestedFeedId]);
+  return (
+    <PublicShell lightsOn={lightsOn} onToggle={onToggle} navigate={navigate}>
+      <main className="feedPage wrap">
+        <header className="feedHeading">
+          <div>
+            <p>CAT'S WORLD · NOW</p>
+            <h1>动态</h1>
+            <span>简短记录，新鲜发现。</span>
+          </div>
+          <div className="feedFilterArea">
+            <button
+              className="feedFilterButton"
+              aria-label="筛选动态"
+              aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((value) => !value)}
+            >
+              <SlidersHorizontal size={21} />
+            </button>
+            {filterOpen && (
+              <div className="feedFilterMenu">
+                {['', ...(meta.categories || [])].map((value) => (
+                  <button
+                    key={value || 'all'}
+                    className={category === value ? 'active' : ''}
+                    onClick={() => {
+                      setCategory(value);
+                      setFilterOpen(false);
+                    }}
+                  >
+                    {value || '全部动态'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </header>
+        {category && (
+          <div className="feedSelectedFilter">
+            {category}
+            <button onClick={() => setCategory('')}>清除筛选 ×</button>
+          </div>
+        )}
+        {loading ? (
+          <p className="feedState">正在加载动态…</p>
+        ) : error && !items.length ? (
+          <p className="feedState">{error}</p>
+        ) : !items.length ? (
+          <p className="feedState">这里还没有动态。</p>
+        ) : (
+          <div className="feedTimeline">
+            {items.map((item) => (
+              <article className={`feedEntry${item.id === requestedFeedId ? ' isTarget' : ''}`} id={`feed-${item.id}`} key={item.id}>
+                <span className="feedEntryIcon" aria-hidden="true">
+                  {feedIcon(item.category)}
+                </span>
+                <div className="feedEntryContent">
+                  <div className="feedEntryTop">
+                    <div>
+                      <span className="feedCategory">{item.category}</span>
+                      <h2>{item.title}</h2>
+                      {item.kicker && <p className="feedKicker">{item.kicker}</p>}
+                    </div>
+                    <div className="feedEntryTools">
+                      <time dateTime={item.publishedAt} title={new Date(item.publishedAt).toLocaleString('zh-CN')}>
+                        {feedRelativeTime(item.publishedAt)}
+                      </time>
+                      <button
+                        className="feedMore"
+                        aria-label={`更多操作：${item.title}`}
+                        onClick={() => setMoreOpen((current) => (current === item.id ? null : item.id))}
+                      >
+                        <MoreHorizontal size={22} />
+                      </button>
+                      {moreOpen === item.id && (
+                        <div className="feedMoreMenu">
+                          <button onClick={() => copyLink(item)}>复制动态链接</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <MarkedFeedBody content={item.bodyMd} />
+                  <div className="feedActions">
+                    <button
+                      className={item.likedByMe ? 'liked' : ''}
+                      onClick={() => toggleLike(item)}
+                      aria-label={`喜欢：${item.title}`}
+                      aria-pressed={!!item.likedByMe}
+                    >
+                      <Heart size={19} fill={item.likedByMe ? 'currentColor' : 'none'} />
+                      {item.likeCount || ''}
+                    </button>
+                    <button onClick={() => openComments(item)} aria-expanded={expanded === item.id}>
+                      <MessageSquare size={19} />
+                      讨论{item.commentCount ? ` ${item.commentCount}` : ''}
+                    </button>
+                    {copyNotice === item.id && <span className="feedActionNotice">链接已复制</span>}
+                  </div>
+                  {expanded === item.id && (
+                    <section className="feedDiscussion" aria-label={`${item.title}的讨论`}>
+                      {comments.length ? (
+                        comments.map((comment) => (
+                          <div className="feedComment" key={comment.id}>
+                            <b>{comment.authorName}</b>
+                            <time>{new Date(comment.ctime).toLocaleString('zh-CN')}</time>
+                            <p>{comment.body}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="feedNoComments">还没有讨论，来留下第一条。</p>
+                      )}
+                      <textarea
+                        value={commentBody}
+                        onChange={(event) => setCommentBody(event.target.value)}
+                        placeholder="写下你的想法…"
+                        maxLength={2000}
+                        rows={3}
+                      />
+                      <div className="feedDiscussionFoot">
+                        <span>{commentNotice}</span>
+                        <button disabled={sending || !commentBody.trim()} onClick={() => submitComment(item)}>
+                          {sending ? '提交中…' : '发表评论'}
+                        </button>
+                      </div>
+                    </section>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+        {error && items.length > 0 && <p className="feedState">{error}</p>}
+        {page < (meta.totalPages || 0) && (
+          <button className="feedLoadMore" disabled={loadingMore} onClick={loadMore}>
+            {loadingMore ? '加载中…' : '查看更多动态'}
+          </button>
+        )}
+      </main>
+    </PublicShell>
+  );
+}
+
 function App() {
   const [lightsOn, setLightsOn] = useState(false);
   const [location, setLocation] = useState(() => window.location.pathname + window.location.search);
@@ -2146,9 +2675,18 @@ function App() {
     }
   }, [site]);
   const pathname = location.split('?')[0];
-  if (pathname === '/login') return <AuthScreen mode="login" navigate={navigate} location={location} />;
-  if (pathname === '/register') return <AuthScreen mode="register" navigate={navigate} location={location} />;
-  if (pathname === '/verify-email') return <VerifyEmailScreen navigate={navigate} location={location} />;
+  if (pathname === '/login' || pathname === '/register')
+    return (
+      <React.Suspense fallback={<main className="studioLoading">正在加载…</main>}>
+        <AuthScreen mode={pathname === '/login' ? 'login' : 'register'} navigate={navigate} location={location} />
+      </React.Suspense>
+    );
+  if (pathname === '/verify-email')
+    return (
+      <React.Suspense fallback={<main className="studioLoading">正在加载…</main>}>
+        <VerifyEmailScreen navigate={navigate} location={location} />
+      </React.Suspense>
+    );
   if (pathname === '/studio' || pathname.startsWith('/studio/'))
     return (
       <React.Suspense fallback={<main className="studioLoading">正在加载工作台…</main>}>
@@ -2157,6 +2695,7 @@ function App() {
     );
   if (pathname === '/links')
     return <FriendLinksScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} />;
+  if (pathname === '/feed') return <FeedScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} />;
   if (pathname === '/tools') return <ToolsScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} />;
   if (pathname === '/tags') return <TagsScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} />;
   if (pathname === '/photos')
@@ -2194,7 +2733,7 @@ function App() {
     <PublicShell lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate}>
       <Hero lightsOn={lightsOn} postCount={home?.postCount} siteViewCount={home?.siteViewCount} navigate={navigate} />
       {homeError && <p className="wrap dynamicError">{homeError}</p>}
-      <Main home={home} navigate={navigate} />
+      <Main home={home} loading={!home && !homeError} navigate={navigate} />
     </PublicShell>
   );
 }

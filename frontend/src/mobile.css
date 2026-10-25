@@ -553,6 +553,49 @@
     display: none !important;
   }
 
+  /* ---------- Home: latest updates (same row language as the post list) ---------- */
+  .appShell .homeFeed {
+    margin: 16px 0 18px !important;
+  }
+  .appShell .feedGrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+  .appShell .feedCard {
+    flex-direction: row-reverse !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 12px !important;
+    border-radius: var(--m-radius) !important;
+  }
+  .appShell .feedCardMedia {
+    flex: 0 0 88px !important;
+    width: 88px !important;
+    height: 88px !important;
+    aspect-ratio: auto !important;
+    border-radius: 11px !important;
+  }
+  .appShell .feedCardMedia.isEmpty span {
+    font-size: 15px !important;
+  }
+  .appShell .feedCardBody {
+    min-width: 0 !important;
+    gap: 6px !important;
+    padding: 2px 0 !important;
+  }
+  .appShell .feedCard b {
+    font-size: 15px !important;
+  }
+  .appShell .feedCard small {
+    display: -webkit-box !important; /* rows have room for the one-line kicker */
+    overflow: hidden;
+    color: var(--m-muted);
+    font-size: 12px !important;
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
   /* ---------- Home: side panels ---------- */
   /* Status, AI tools and tag cloud are desktop-only; phones keep just the journey card. */
   .appShell .main aside > .status,

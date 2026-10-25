@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap');
+/* Use platform CJK fonts: no third-party font stylesheet can block first paint. */
 
 /* First content band: dense, dashboard-like category entry points. */
 .categoryArea{padding-top:18px!important;gap:16px!important;align-items:stretch}.categoryArea .cats{gap:8px!important}.categoryArea .cats .catCard{height:118px!important;padding:13px 7px 10px!important;border-color:#1b435a!important;border-radius:7px!important;background:linear-gradient(155deg,rgba(12,43,62,.96),rgba(5,23,35,.98))!important;box-shadow:inset 0 1px 0 rgba(145,212,255,.035),0 7px 22px rgba(0,0,0,.1);transition:transform .18s ease,border-color .18s ease,background .18s ease!important}.categoryArea .cats .catCard:hover{transform:translateY(-3px);border-color:#2b82b1!important;background:linear-gradient(155deg,#103a55,#071d2e)!important}.categoryArea .cats .catCard>svg{width:27px!important;height:27px!important;margin-bottom:1px;color:#7dcfff;stroke-width:1.8;filter:drop-shadow(0 0 8px rgba(19,172,247,.24))}.categoryArea .cats .catCard b{font-weight:700!important;letter-spacing:.1px}.categoryArea .cats .catCard small{display:flex!important;align-items:center;gap:2px;color:#89a8bd!important}.categoryArea .cats .catCard small svg{width:13px;height:13px;color:#25b8fb}.categoryArea .cats .catCard:nth-child(2)>svg{color:#f4c36a}.categoryArea .cats .catCard:nth-child(3)>svg{color:#38c5f3}.categoryArea .cats .catCard:nth-child(4)>svg{color:#6ec4ff}.categoryArea .cats .catCard:nth-child(5)>svg{color:#6b94ff}.categoryArea .cats .catCard:nth-child(6)>svg{color:#55e4a7}.categoryArea .cats .catCard:nth-child(7)>svg{color:#cf78ff}.categoryArea .cats .catCard:nth-child(8)>svg{color:#ffca61}.categoryArea .cats .feature{background:radial-gradient(circle at 50% 28%,rgba(128,54,197,.72),rgba(38,22,73,.98) 61%,#0d2031)!important;border-color:#b44be6!important;box-shadow:inset 0 0 22px rgba(190,72,239,.28),0 8px 22px rgba(78,23,115,.16)!important}.categoryArea .cats .feature>svg{color:#ec70ed!important;filter:drop-shadow(0 0 9px rgba(231,83,241,.65))}.categoryArea .status{height:148px!important;padding:13px 15px!important;border-color:#1d4960!important;border-radius:7px!important;background:linear-gradient(145deg,rgba(11,48,66,.92),rgba(5,25,37,.98))!important;box-shadow:inset 0 1px 0 rgba(154,220,255,.04)}.categoryArea .status h3{display:flex;align-items:center;gap:7px;margin-bottom:10px!important;letter-spacing:.1px}.categoryArea .status h3 svg{color:#45e9af;filter:drop-shadow(0 0 6px rgba(69,233,175,.35))}.categoryArea .status em{margin-left:auto}.categoryArea .status p{display:flex;align-items:center;margin:5px 0!important;font-size:12px!important}.categoryArea .status p i{margin-right:8px!important}.categoryArea .status p span{margin-left:auto;color:#a8c2d3!important}
@@ -662,7 +662,7 @@
 
 /* Homepage counters animate once when their real values arrive. */
 .appShell .hero .stats .statValue{animation:stat-value-enter .68s cubic-bezier(.2,.85,.24,1) both;font-variant-numeric:tabular-nums}
-@keyframes stat-value-enter{from{opacity:0;transform:translateY(8px) scale(.92);filter:blur(2px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes stat-value-enter{from{opacity:0;transform:translateY(8px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){.appShell .hero .stats .statValue{animation:none}}
 
 /* Do not let the global page-footer treatment leak into article-card metadata. */
@@ -801,3 +801,76 @@
 .appShell .footerSocial a:focus-visible{outline:2px solid #42c5ff;outline-offset:3px;border-radius:3px}
 .appShell .footerVisitorIp{color:#91abc0;font-size:10px;overflow-wrap:anywhere}
 .appShell .footerFiling{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:10px}
+
+/* Registration paused state on /register */
+.authPaused{display:grid;justify-items:start;gap:4px}
+.authPausedIcon{display:grid;place-items:center;width:56px;height:56px;margin-bottom:14px;border-radius:16px;background:rgba(245,176,66,.14);color:#f5b042}
+.authPaused .authSubmit{width:100%;margin-top:18px}
+
+.mediaSelectionNotice button+button{margin-left:0}
+.mediaGroupItem{display:inline-flex;flex:0 0 auto;align-items:stretch;gap:3px}
+.mediaGroups .mediaGroupCopy{display:grid;place-items:center;padding:0 9px;color:#5f8297}
+.mediaGroups .mediaGroupCopy:hover{color:#117da9}
+
+
+/* The hero image is preloaded from index.html.  Keep the art direction but let
+   phones use a substantially smaller crop. */
+.heroArt{background-image:var(--hero-image)!important}
+@media(max-width:767px){.heroArt{background-image:var(--hero-image-mobile)!important}}
+
+/* The previous remote font import delayed paint on slow connections. */
+body,button,input,select,textarea{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans SC",Arial,sans-serif}
+
+
+/* Home "最新动态": compact media cards (short image strip, meta, two-line title), matching the 6px card radius used site-wide. */
+.homeFeed{margin:16px 0 18px}
+/* Desktop already contributes a 12px parent grid gap between these sections. */
+@media(min-width:1025px){.homeFeed{margin:4px 0 6px}}
+.homeFeedHeading{margin-bottom:14px!important}
+.feedGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.appShell .feedCard{display:flex;flex-direction:column;min-width:0;height:auto;margin:0;padding:0;overflow:hidden;border:1px solid rgba(52,124,160,.42);border-radius:6px;background:linear-gradient(170deg,rgba(12,44,64,.92),rgba(6,24,38,.96));color:inherit;font:inherit;text-align:left;cursor:pointer;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+.appShell .feedCard:hover{transform:translateY(-3px);border-color:#46c8f6;box-shadow:0 16px 32px rgba(0,0,0,.3)}
+.appShell .feedCard:focus-visible{outline:2px solid #46c8f6;outline-offset:3px}
+.feedCardMedia{position:relative;display:block;height:88px;overflow:hidden;background:#0a2a3d}
+.feedCardMedia img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .45s ease}
+.feedCard:hover .feedCardMedia img{transform:scale(1.04)}
+.feedCardMedia.isEmpty{display:grid;place-items:center;background:radial-gradient(circle at 78% 20%,rgba(76,198,246,.32),transparent 45%),radial-gradient(circle at 15% 90%,rgba(138,108,247,.28),transparent 50%),linear-gradient(140deg,#0f3d58,#0a2234)}
+.feedCardMedia.isEmpty span{color:rgba(232,247,255,.9);font-size:18px;font-weight:800;letter-spacing:.12em}
+.feedCardBody{display:flex;flex:1;flex-direction:column;gap:7px;padding:10px 14px 12px}
+.feedCardMeta{display:flex;align-items:center;gap:8px;min-width:0;font-size:12px;line-height:1}
+.feedCardMeta em{flex:0 1 auto;min-width:0;overflow:hidden;padding:4px 8px;border-radius:999px;background:rgba(76,198,246,.14);color:#6fd3fb;font-style:normal;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.feedCardMeta time{flex:0 0 auto;color:#7f9fb2}
+.feedCardMeta em+time::before{content:"·";margin-right:8px;color:#4c6f83}
+.feedCard b{display:-webkit-box;overflow:hidden;color:#eef8ff;font-size:15px;font-weight:700;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.feedCard small{display:none}
+.appShell.lightsOn .feedCard{border-color:#cfe2ec;background:#fff;box-shadow:0 6px 16px rgba(63,113,145,.07)}
+.appShell.lightsOn .feedCard:hover{border-color:#55bce4;box-shadow:0 16px 30px rgba(63,113,145,.16)}
+.appShell.lightsOn .feedCardMedia{background:#e6f3fa}
+.appShell.lightsOn .feedCardMedia.isEmpty{background:radial-gradient(circle at 78% 20%,rgba(76,198,246,.35),transparent 45%),radial-gradient(circle at 15% 90%,rgba(138,108,247,.22),transparent 50%),linear-gradient(140deg,#dff2fb,#c9e6f4)}
+.appShell.lightsOn .feedCardMedia.isEmpty span{color:#1f6f97}
+.appShell.lightsOn .feedCardMeta em{background:#e3f3fa;color:#1f80ad}
+.appShell.lightsOn .feedCardMeta time{color:#7391a4}
+.appShell.lightsOn .feedCard b{color:#1b3a50}
+.appShell.lightsOn .feedCard small{color:#5f7d91}
+@media(max-width:1024px) and (min-width:768px){.feedGrid{gap:12px}.feedCardMedia{height:80px}.feedCard b{font-size:14px}}
+
+/* Loading placeholders: same boxes as the real cards, static (no shimmer animation). */
+.catCard.isSkeleton,.post.isSkeleton,.feedCard.isSkeleton{pointer-events:none;cursor:default}
+.appShell .catCard.isSkeleton,.appShell .post.isSkeleton{background:rgba(14,52,74,.45)!important;border-color:rgba(52,124,160,.25)!important;box-shadow:none!important}
+.appShell .feedCard.isSkeleton{background:rgba(14,52,74,.35);border-color:rgba(52,124,160,.25)}
+.feedCard.isSkeleton .feedCardMedia{background:rgba(26,74,102,.45)}
+.feedCard.isSkeleton .feedCardBody i{display:block;height:12px;border-radius:4px;background:rgba(40,96,128,.45)}
+.feedCard.isSkeleton .feedCardBody i:first-child{width:38%}
+.feedCard.isSkeleton .feedCardBody i:last-child{width:86%;height:15px;margin-top:4px}
+.appShell.lightsOn .catCard.isSkeleton,.appShell.lightsOn .post.isSkeleton,.appShell.lightsOn .feedCard.isSkeleton{background:#eef5f9!important;border-color:#dce9f0!important}
+.appShell.lightsOn .feedCard.isSkeleton .feedCardMedia,.appShell.lightsOn .feedCard.isSkeleton .feedCardBody i{background:#dfecf3}
+/* Placeholder heights mirror the measured real cards at each layout width. */
+.appShell .post.isSkeleton{height:241px!important}
+.appShell .feedCard.isSkeleton{height:183px}
+@media(max-width:1024px) and (min-width:768px){.appShell .feedCard.isSkeleton{height:172px}}
+@media(max-width:767px){.appShell .main .post.isSkeleton{height:157px!important}.appShell .feedCard.isSkeleton{height:124px!important}.appShell .feedCard.isSkeleton .feedCardMedia{flex:0 0 88px}}
+
+/* Post cards and list rows are anchors now; keep them looking like cards. */
+a.postLink,a.listRow{display:block;color:inherit;text-decoration:none}
+a.listRow{display:grid}
+.listRow time b{white-space:nowrap}

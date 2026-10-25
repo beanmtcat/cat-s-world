@@ -16,10 +16,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "mmcat_categories",
-        sa.Column("is_home_visible", sa.Boolean(), nullable=False, server_default="true"),
-    )
+    columns = {item["name"] for item in sa.inspect(op.get_bind()).get_columns("mmcat_categories")}
+    if "is_home_visible" not in columns:
+        op.add_column(
+            "mmcat_categories",
+            sa.Column("is_home_visible", sa.Boolean(), nullable=False, server_default="true"),
+        )
 
 
 def downgrade() -> None:

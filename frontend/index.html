@@ -4,7 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#061b2a" />
+    <link
+      rel="preload"
+      as="image"
+      href="/src/assets/hero-workspace-mobile.webp"
+      media="(max-width: 767px)"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      href="/src/assets/hero-workspace.webp"
+      media="(min-width: 768px)"
+      fetchpriority="high"
+    />
     <title>猫子的世界</title>
+    <link rel="alternate" type="application/rss+xml" title="猫子的世界" href="/api/v1/rss.xml" />
+    <link rel="ard" href="/.well-known/ard.json" />
   </head>
   <body>
     <div id="root"></div>

@@ -6,6 +6,7 @@ Create Date: 2026-10-01
 """
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "0012_site_settings_sections"
@@ -15,13 +16,27 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("mmcat_site_properties", sa.Column("posts_per_page", sa.Integer(), nullable=False, server_default="12"))
-    op.add_column("mmcat_site_properties", sa.Column("category_posts_per_page", sa.Integer(), nullable=False, server_default="12"))
-    op.add_column("mmcat_site_properties", sa.Column("tag_posts_per_page", sa.Integer(), nullable=False, server_default="12"))
-    op.add_column("mmcat_site_properties", sa.Column("site_keywords", sa.String(length=1000), nullable=True))
-    op.add_column("mmcat_site_properties", sa.Column("seo_noindex", sa.Boolean(), nullable=False, server_default=sa.text("false")))
-    op.add_column("mmcat_site_properties", sa.Column("registration_enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")))
-    op.add_column("mmcat_site_properties", sa.Column("comments_moderation_enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")))
+    columns = {
+        item["name"] for item in sa.inspect(op.get_bind()).get_columns("mmcat_site_properties")
+    }
+    for column in (
+        sa.Column("posts_per_page", sa.Integer(), nullable=False, server_default="12"),
+        sa.Column("category_posts_per_page", sa.Integer(), nullable=False, server_default="12"),
+        sa.Column("tag_posts_per_page", sa.Integer(), nullable=False, server_default="12"),
+        sa.Column("site_keywords", sa.String(length=1000), nullable=True),
+        sa.Column("seo_noindex", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "registration_enabled", sa.Boolean(), nullable=False, server_default=sa.text("true")
+        ),
+        sa.Column(
+            "comments_moderation_enabled",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("true"),
+        ),
+    ):
+        if column.name not in columns:
+            op.add_column("mmcat_site_properties", column)
 
 
 def downgrade() -> None:

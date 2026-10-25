@@ -5,6 +5,7 @@ import hashlib
 import re
 import socket
 import struct
+from contextlib import suppress
 from datetime import UTC, datetime
 from functools import lru_cache
 from math import ceil
@@ -57,6 +58,8 @@ from app.schemas.content import (
     StudioCommentReply,
     StudioFriendLinkInput,
     StudioGalleryInput,
+    StudioMediaGroupInput,
+    StudioMediaGroupMembers,
     StudioMediaUpdate,
     StudioNavigationInput,
     StudioNavigationMenuInput,
@@ -72,6 +75,12 @@ from app.schemas.content import (
 from app.services.auth import revoke_all_user_sessions
 from app.services.content import PostService, post_view_counts
 from app.services.html import sanitize_html
+from app.services.images import (
+    register_image_variants,
+    reusable_image_query,
+    store_image_variants,
+    thumbnail_urls,
+)
 from app.services.rate_limit import enforce_rate_limit
 
 router = APIRouter(prefix="/studio", tags=["studio"])
@@ -1216,10 +1225,11 @@ def _friend_link_payload(item: FriendLink) -> dict[str, object]:
     }
 
 
-def _media_payload(item: Media) -> dict[str, object]:
+def _media_payload(item: Media, thumbnail_url: str | None = None) -> dict[str, object]:
     return {
         "id": str(item.id), "postId": str(item.post_id) if item.post_id else None,
         "sourceUrl": item.source_url, "originUrl": item.origin_url,
+        "thumbnailUrl": thumbnail_url,
         "originalName": item.original_name, "mimeType": item.mime_type,
         "byteSize": item.byte_size, "width": item.width, "height": item.height,
         "sourcePlatform": item.source_platform, "ctime": item.ctime, "mtime": item.mtime,
@@ -1266,6 +1276,8 @@ def _put_s3_object(object_key: str, content: BinaryIO, mime_type: str) -> str | 
         ExtraArgs={
             "ContentType": mime_type,
             "ContentDisposition": "inline" if mime_type in _INLINE_MEDIA_TYPES else "attachment",
+            # Keys embed a random id, so an object never changes after upload.
+            "CacheControl": "public, max-age=31536000, immutable",
         },
     )
     head = client.head_object(Bucket=bucket, Key=object_key)
@@ -1437,6 +1449,7 @@ async def list_media(
         )
     )
     media_ids = [item.id for item in rows]
+    thumbnails = await thumbnail_urls(session, [item.source_url for item in rows])
     memberships: dict[UUID, list[str]] = {item_id: [] for item_id in media_ids}
     if media_ids:
         gallery_rows = await session.execute(
@@ -1448,7 +1461,7 @@ async def list_media(
             memberships[media_id].append(str(gallery_id))
     return {
         "data": [
-            {**_media_payload(item), "galleryIds": memberships.get(item.id, [])} for item in rows
+            {**_media_payload(item, thumbnails.get(item.source_url)), "galleryIds": memberships.get(item.id, [])} for item in rows
         ],
         "meta": {
             "requestId": str(request_id(request)),
@@ -1505,6 +1518,8 @@ async def upload_media(
     digest = hashlib.sha256()
     header = bytearray()
     byte_size = 0
+    uploaded_keys = []
+    committed = False
     try:
         async for chunk in request.stream():
             byte_size += len(chunk)
@@ -1533,34 +1548,55 @@ async def upload_media(
                 raise AppError("GALLERY_NOT_FOUND", "所选分组不存在。", 404)
 
         checksum = digest.hexdigest()
+        is_image = safe_mime_type in _INLINE_MEDIA_TYPES
+        stored_mime_type = "image/webp" if is_image else safe_mime_type
         existing = await session.scalar(
-            select(Media).where(Media.checksum == checksum, Media.mime_type == safe_mime_type)
+            reusable_image_query(checksum) if is_image else
+            select(Media).where(Media.checksum == checksum, Media.mime_type == stored_mime_type)
         )
-        uploaded_object_key = None
+        thumbnail_url = None
         if existing is not None:
             existing.isvalid = True
             existing.original_name = PurePath(filename).name
             item = existing
         else:
-            object_key = _upload_object_key(filename)
             try:
-                etag = await asyncio.to_thread(_put_s3_object, object_key, upload, safe_mime_type)
+                if is_image:
+                    variants, object_key, thumbnail_key, etag = await asyncio.to_thread(
+                        store_image_variants, upload, filename,
+                        put=_put_s3_object, delete=_delete_s3_object,
+                        make_key=_upload_object_key,
+                    )
+                    uploaded_keys.extend([object_key, thumbnail_key])
+                    thumbnail_url = _public_media_url(thumbnail_key)
+                else:
+                    object_key = _upload_object_key(filename)
+                    uploaded_keys.append(object_key)
+                    etag = await asyncio.to_thread(_put_s3_object, object_key, upload, safe_mime_type)
+            except AppError:
+                raise
             except Exception as error:  # noqa: BLE001 - SDK errors vary by S3-compatible host.
                 raise AppError("MEDIA_UPLOAD_FAILED", "S3 上传失败，请检查对象存储配置。", 502) from error
-            uploaded_object_key = object_key
-            item = Media(
-                bucket_name=get_settings().s3_bucket,
-                object_key=object_key,
-                source_url=_public_media_url(object_key),
-                original_name=PurePath(filename).name,
-                mime_type=safe_mime_type,
-                byte_size=byte_size,
-                checksum=checksum,
-                etag=etag,
-                source_platform="mmcat",
-            )
-            session.add(item)
-            await session.flush()
+            if is_image:
+                item = await register_image_variants(
+                    session, variants=variants, checksum=checksum,
+                    bucket_name=get_settings().s3_bucket, object_key=object_key,
+                    source_url=_public_media_url(object_key), thumbnail_url=thumbnail_url,
+                    original_name=PurePath(filename).name, source_platform="mmcat", etag=etag,
+                )
+            else:
+                item = Media(
+                    bucket_name=get_settings().s3_bucket, object_key=object_key,
+                    source_url=_public_media_url(object_key), original_name=PurePath(filename).name,
+                    mime_type=stored_mime_type, byte_size=byte_size,
+                    checksum=checksum, etag=etag, source_platform="mmcat",
+                )
+                session.add(item)
+            try:
+                await session.flush()
+            except IntegrityError as error:
+                await session.rollback()
+                raise AppError("MEDIA_CONFLICT", "相同附件正在被上传，请刷新后重试。", 409) from error
 
         if gallery is not None:
             membership = await session.scalar(
@@ -1586,14 +1622,22 @@ async def upload_media(
                 membership.isvalid = True
         try:
             await session.commit()
+            committed = True
         except IntegrityError as error:
             await session.rollback()
-            if uploaded_object_key:
-                await asyncio.to_thread(_delete_s3_object, uploaded_object_key)
             raise AppError("MEDIA_CONFLICT", "相同附件正在被上传，请刷新后重试。", 409) from error
+        except Exception:
+            await session.rollback()
+            raise
         await session.refresh(item)
-        return {"data": _media_payload(item), "meta": {"requestId": str(request_id(request))}}
+        if existing is not None:
+            thumbnail_url = (await thumbnail_urls(session, [item.source_url])).get(item.source_url)
+        return {"data": _media_payload(item, thumbnail_url), "meta": {"requestId": str(request_id(request))}}
     finally:
+        if not committed:
+            for uploaded_key in uploaded_keys:
+                with suppress(Exception):
+                    await asyncio.to_thread(_delete_s3_object, uploaded_key)
         upload.close()
 
 
@@ -1625,6 +1669,59 @@ async def list_media_groups(request: Request, _: tuple[User, UserSession] = Depe
         .order_by(Gallery.sort_order, Gallery.name)
     )
     return {"data": [_gallery_payload(item, count) for item, count in rows], "meta": {"requestId": str(request_id(request))}}
+
+
+@router.post("/media-groups", status_code=201)
+async def create_media_group(
+    body: StudioMediaGroupInput,
+    request: Request,
+    _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    item = Gallery(
+        locale="zh-CN",
+        slug=f"attachment-group-{uuid4().hex}",
+        name=body.name,
+        status="published",
+        visibility="private",
+        collection_kind="attachment_group",
+        source_platform="mmcat",
+    )
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+    return {"data": _gallery_payload(item), "meta": {"requestId": str(request_id(request))}}
+
+
+@router.post("/media-groups/{group_id:uuid}/members")
+async def add_media_group_members(
+    group_id: UUID,
+    body: StudioMediaGroupMembers,
+    request: Request,
+    _: tuple[User, UserSession] = Depends(require_roles("admin", "editor")),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    group = await session.get(Gallery, group_id)
+    if group is None or not group.isvalid or group.collection_kind != "attachment_group":
+        raise AppError("MEDIA_GROUP_NOT_FOUND", "附件分组不存在。", 404)
+    media_ids = set(body.media_ids)
+    valid_ids = set(await session.scalars(select(Media.id).where(Media.id.in_(media_ids), Media.isvalid.is_(True))))
+    if valid_ids != media_ids:
+        raise AppError("MEDIA_NOT_FOUND", "所选附件包含不存在或已失效的项目。", 422)
+    existing = {
+        item.media_id: item
+        for item in await session.scalars(
+            select(GalleryItem).where(GalleryItem.gallery_id == group_id, GalleryItem.media_id.in_(media_ids))
+        )
+    }
+    for media_id in media_ids:
+        membership = existing.get(media_id)
+        if membership is None:
+            session.add(GalleryItem(gallery_id=group_id, media_id=media_id, sort_order=0))
+        else:
+            membership.isvalid = True
+    await session.commit()
+    return {"data": {"groupId": str(group_id), "added": len(media_ids)}, "meta": {"requestId": str(request_id(request))}}
 
 
 @router.get("/galleries/{gallery_id}")

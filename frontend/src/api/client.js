@@ -99,7 +99,14 @@ async function upload(path, file, { galleryId } = {}) {
 
 export const authApi = {
   // "Not signed in" is cached as well, so anonymous visitors do not re-ask on every screen.
-  me: () => cached('me', () => api('/auth/me'), { keepErrors: true }),
+  me: () =>
+    cached(
+      'me',
+      // Every session sets the CSRF cookie, so without it there is nothing to ask:
+      // answer locally instead of logging a 401 in the console on every page view.
+      () => (readCsrfToken() ? api('/auth/me') : Promise.reject(new ApiError('AUTH_REQUIRED', '请先登录。', 401))),
+      { keepErrors: true },
+    ),
   login: async (body) => {
     const result = await api('/auth/login', { method: 'POST', body });
     sessionCsrfToken = result?.data?.csrfToken || null;
@@ -128,6 +135,10 @@ export const contentApi = {
   resolveRedirect: (path) => api(withQuery('/redirects/resolve', { path })),
   page: (slug, locale = publicLocale()) => api(`/pages/${encodeURIComponent(slug)}?locale=${locale}`),
   friendLinks: (locale = publicLocale()) => api(`/friend-links?locale=${locale}`),
+  feedPosts: (params = {}) => api(withQuery('/feed-posts', params)),
+  feedComments: (id) => api(`/feed-posts/${id}/comments`),
+  createFeedComment: (id, body) => api(`/feed-posts/${id}/comments`, { method: 'POST', body }),
+  toggleFeedLike: (id) => api(`/feed-posts/${id}/like`, { method: 'POST' }),
   galleries: (locale = publicLocale()) => api(`/galleries?locale=${locale}`),
   gallery: (slug, params = {}) => api(withQuery(`/galleries/${encodeURIComponent(slug)}`, { locale: publicLocale(), ...params })),
 };
@@ -184,6 +195,8 @@ export const studioApi = {
   uploadMedia: (file, options = {}) => upload('/studio/media/upload', file, options),
   galleries: () => api('/studio/galleries'),
   mediaGroups: () => api('/studio/media-groups'),
+  createMediaGroup: (body) => api('/studio/media-groups', { method: 'POST', body }),
+  addMediaGroupMembers: (id, mediaIds) => api(`/studio/media-groups/${id}/members`, { method: 'POST', body: { mediaIds } }),
   gallery: (id) => api(`/studio/galleries/${id}`),
   createGallery: (body) => api('/studio/galleries', { method: 'POST', body }),
   updateGallery: (id, body) => api(`/studio/galleries/${id}`, { method: 'PUT', body }),
@@ -193,4 +206,10 @@ export const studioApi = {
   auditLogs: (params = {}) => api(withQuery(`/studio/audit-logs`, params)),
   siteSettings: () => api('/studio/settings/site'),
   updateSiteSettings: (body) => api('/studio/settings/site', { method: 'PATCH', body }),
+  feedPosts: (params = {}) => api(withQuery('/studio/feed-posts', params)),
+  createFeedPost: (body) => api('/studio/feed-posts', { method: 'POST', body }),
+  updateFeedPost: (id, body) => api(`/studio/feed-posts/${id}`, { method: 'PUT', body }),
+  deleteFeedPost: (id) => api(`/studio/feed-posts/${id}`, { method: 'DELETE' }),
+  feedComments: () => api('/studio/feed-posts/comments'),
+  moderateFeedComment: (id, status) => api(`/studio/feed-posts/comments/${id}`, { method: 'PATCH', body: { status } }),
 };

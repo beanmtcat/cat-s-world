@@ -7,11 +7,10 @@ function contentSecurityPolicy(apiOrigin) {
   const policy = [
     "default-src 'self'",
     "script-src 'self' https://ip.hzcat.com",
-    // style.css @imports Noto Sans SC / Space Grotesk from Google Fonts.
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' https: http: data: blob:",
     "media-src 'self' https: http:",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "font-src 'self' data:",
     `connect-src 'self' ${apiOrigin}`.trim(),
     "object-src 'none'",
     "base-uri 'self'",

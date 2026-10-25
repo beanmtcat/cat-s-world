@@ -50,10 +50,12 @@ import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import TurndownService from 'turndown';
 import { ApiError, authApi, studioApi } from './api/client';
+import FeedStudio from './feed-studio';
 
 const menu = [
   [LayoutDashboard, '概览'],
   [FileText, '文章'],
+  [Activity, '动态'],
   [BookOpenText, '独立页'],
   [MessageSquare, '评论'],
   [Bot, 'AI 工具'],
@@ -158,6 +160,7 @@ const slugify = (value) =>
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
+const PAGE_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*(?:\.html)?$/;
 // Page buttons to render: everything when short, otherwise first, last and the neighbours of the current page.
 const pageWindow = (page, totalPages) =>
   totalPages <= 7
@@ -705,7 +708,7 @@ function EditorAttachmentDialog({ onClose, onInsert }) {
               <label key={asset.id} className={selected.has(asset.id) ? 'selected' : ''}>
                 <input type="checkbox" checked={selected.has(asset.id)} onChange={() => toggle(asset.id)} />
                 <span>{asset.mimeType?.startsWith('image/') ? <ImageIcon size={20} /> : <File size={20} />}</span>
-                {asset.mimeType?.startsWith('image/') && <img src={asset.sourceUrl} alt="" loading="lazy" />}
+                {asset.mimeType?.startsWith('image/') && <img src={asset.thumbnailUrl || asset.sourceUrl} alt="" loading="lazy" />}
                 <b>{asset.originalName || '未命名附件'}</b>
                 <small>{readableBytes(asset.byteSize)}</small>
               </label>
@@ -1236,7 +1239,7 @@ function PageEditor({ page, saving, onClose, onSave }) {
           </button>
           <button
             className="primaryButton"
-            disabled={saving || !form.title.trim() || !form.slug || !form.content.trim()}
+            disabled={saving || !form.title.trim() || !PAGE_SLUG_PATTERN.test(form.slug) || !form.content.trim()}
             onClick={() => onSave(form)}
           >
             {saving ? '保存中…' : '保存页面'}
@@ -1285,8 +1288,14 @@ function PageEditor({ page, saving, onClose, onSave }) {
           )}
         </main>
         <aside className="postSettingsRail">
-          <Field label="页面地址 slug">
-            <input value={form.slug} onChange={(event) => set('slug', slugify(event.target.value))} placeholder="about" />
+          <Field label="页面地址 slug" hint="支持 about 或旧站的 about.html 地址；地址主体仅允许小写字母、数字和连字符。">
+            <input
+              value={form.slug}
+              onChange={(event) => set('slug', event.target.value.toLowerCase().trim())}
+              maxLength={180}
+              aria-invalid={Boolean(form.slug) && !PAGE_SLUG_PATTERN.test(form.slug)}
+              placeholder="about 或 about.html"
+            />
           </Field>
           <Field label="语言">
             <select value={form.locale} onChange={(event) => set('locale', event.target.value)}>
@@ -2107,7 +2116,7 @@ function MediaPreview({ item, onPreview }) {
       <Icon className="mediaFallbackIcon" size={28} />
       {type === 'image' && (
         <img
-          src={item.sourceUrl}
+          src={item.thumbnailUrl || item.sourceUrl}
           alt=""
           loading="lazy"
           onError={(event) => {
@@ -2339,6 +2348,12 @@ function MediaManager({ items = [], galleries: initialGalleries = [], saving, on
   const [previewing, setPreviewing] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadNotice, setUploadNotice] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupActionError, setGroupActionError] = useState('');
+  const [groupBusy, setGroupBusy] = useState(false);
+  const [assigningGroup, setAssigningGroup] = useState(false);
+  const [assignGroupId, setAssignGroupId] = useState('');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [type, setType] = useState('');
@@ -2354,11 +2369,12 @@ function MediaManager({ items = [], galleries: initialGalleries = [], saving, on
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [galleryGroups, setGalleryGroups] = useState(initialGalleries);
+  const refreshGroups = async () => {
+    const result = await studioApi.mediaGroups();
+    setGalleryGroups(result.data || []);
+  };
   useEffect(() => {
-    studioApi
-      .mediaGroups()
-      .then((result) => setGalleryGroups(result.data))
-      .catch(() => {});
+    refreshGroups().catch(() => {});
   }, []);
   const opaqueGroups = galleryGroups.filter((gallery) => gallery.name?.startsWith('attachment-group-'));
   const galleries = galleryGroups.map((gallery) => ({
@@ -2424,6 +2440,37 @@ function MediaManager({ items = [], galleries: initialGalleries = [], saving, on
     ...item,
     galleryNames: galleries.filter((gallery) => item.galleryIds?.includes(gallery.id)).map((gallery) => gallery.name),
   }));
+  const createGroup = async () => {
+    if (!groupName.trim()) return;
+    setGroupBusy(true);
+    setGroupActionError('');
+    try {
+      await studioApi.createMediaGroup({ name: groupName.trim() });
+      await refreshGroups();
+      setGroupName('');
+      setCreatingGroup(false);
+      setUploadNotice('分组已创建，可在上传附件时选择，或将现有附件加入分组。');
+    } catch (reason) {
+      setGroupActionError(reason.message || '创建分组失败。');
+    } finally {
+      setGroupBusy(false);
+    }
+  };
+  const addSelectedToGroup = async () => {
+    if (!assignGroupId || !selected.size) return;
+    setGroupBusy(true);
+    setGroupActionError('');
+    try {
+      await studioApi.addMediaGroupMembers(assignGroupId, [...selected]);
+      await Promise.all([refreshGroups(), loadAssets()]);
+      setAssigningGroup(false);
+      setUploadNotice('所选附件已加入分组。');
+    } catch (reason) {
+      setGroupActionError(reason.message || '加入分组失败。');
+    } finally {
+      setGroupBusy(false);
+    }
+  };
   return (
     <>
       <div className="studioHeading mediaHeading">
@@ -2435,6 +2482,10 @@ function MediaManager({ items = [], galleries: initialGalleries = [], saving, on
         </div>
         <div className="mediaHeadingActions">
           <span className="storagePolicy">S3 对象存储</span>
+          <button className="secondaryButton" onClick={() => { setGroupActionError(''); setCreatingGroup(true); }}>
+            <Plus size={17} />
+            新建分组
+          </button>
           <button className="primaryButton" onClick={() => setUploading(true)}>
             <UploadCloud size={17} />
             上传附件
@@ -2497,14 +2548,30 @@ function MediaManager({ items = [], galleries: initialGalleries = [], saving, on
             未分组
           </button>
           {galleries.map((gallery) => (
-            <button
-              className={group === gallery.id ? 'active' : ''}
-              key={gallery.id}
-              onClick={() => changeFilter(gallery.id)}
-              title={gallery.description || gallery.name}
-            >
-              {gallery.name} <small>{gallery.itemCount}</small>
-            </button>
+            <div className="mediaGroupItem" key={gallery.id}>
+              <button
+                className={group === gallery.id ? 'active' : ''}
+                onClick={() => changeFilter(gallery.id)}
+                title={gallery.description || gallery.name}
+              >
+                {gallery.name} <small>{gallery.itemCount}</small>
+              </button>
+              <button
+                className="mediaGroupCopy"
+                aria-label={`复制${gallery.name}的分组 ID`}
+                title="复制分组 ID，供动态图片接口使用"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(gallery.id);
+                    setUploadNotice(`已复制「${gallery.name}」的分组 ID。`);
+                  } catch {
+                    setUploadNotice(`复制失败，分组 ID：${gallery.id}`);
+                  }
+                }}
+              >
+                <Copy size={14} />
+              </button>
+            </div>
           ))}
         </div>
         {uploadNotice && (
@@ -2515,7 +2582,11 @@ function MediaManager({ items = [], galleries: initialGalleries = [], saving, on
         )}
         {selected.size > 0 && (
           <div className="mediaSelectionNotice">
-            已选择当前页 {selected.size} 项 <button onClick={() => setSelected(new Set())}>清除选择</button>
+            已选择当前页 {selected.size} 项
+            <button onClick={() => { setGroupActionError(''); setAssignGroupId(galleries[0]?.id || ''); setAssigningGroup(true); }}>
+              加入分组
+            </button>
+            <button onClick={() => setSelected(new Set())}>清除选择</button>
           </div>
         )}
         {loadError ? (
@@ -2585,6 +2656,48 @@ function MediaManager({ items = [], galleries: initialGalleries = [], saving, on
           )}
         </footer>
       </section>
+      {creatingGroup && (
+        <Modal
+          title="新建附件分组"
+          onClose={() => setCreatingGroup(false)}
+          actions={
+            <>
+              <button className="secondaryButton" onClick={() => setCreatingGroup(false)}>取消</button>
+              <button className="primaryButton" disabled={groupBusy || !groupName.trim()} onClick={createGroup}>
+                {groupBusy ? '创建中…' : '创建分组'}
+              </button>
+            </>
+          }
+        >
+          <Field label="分组名称">
+            <input autoFocus maxLength={240} value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="例如：动态配图" />
+          </Field>
+          {groupActionError && <div className="mediaLoadError" role="alert">{groupActionError}</div>}
+        </Modal>
+      )}
+      {assigningGroup && (
+        <Modal
+          title="将附件加入分组"
+          onClose={() => setAssigningGroup(false)}
+          actions={
+            <>
+              <button className="secondaryButton" onClick={() => setAssigningGroup(false)}>取消</button>
+              <button className="primaryButton" disabled={groupBusy || !assignGroupId} onClick={addSelectedToGroup}>
+                {groupBusy ? '处理中…' : '加入分组'}
+              </button>
+            </>
+          }
+        >
+          {galleries.length ? (
+            <Field label={`选择分组（${selected.size} 个附件）`}>
+              <select value={assignGroupId} onChange={(event) => setAssignGroupId(event.target.value)}>
+                {galleries.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </Field>
+          ) : <p>还没有分组，请先新建分组。</p>}
+          {groupActionError && <div className="mediaLoadError" role="alert">{groupActionError}</div>}
+        </Modal>
+      )}
       {uploading && (
         <MediaUploadDialog
           galleries={galleries}
@@ -3797,6 +3910,7 @@ function AuditLogView({ items, loading }) {
 const studioPaths = {
   概览: '/studio/home',
   文章: '/studio/posts',
+  动态: '/studio/feed',
   独立页: '/studio/pages',
   分类: '/studio/categories',
   标签: '/studio/tags',
@@ -4596,6 +4710,8 @@ export function StudioApp({ navigate, location }) {
         onToggle={togglePost}
         navigate={navigate}
       />
+    ) : active === '动态' ? (
+      <FeedStudio />
     ) : active === '独立页' ? (
       <PageManager
         pages={data.pages}

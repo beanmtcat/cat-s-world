@@ -1,0 +1,164 @@
+.feedPage {
+  max-width: 1120px;
+  min-height: 60vh;
+  padding-top: 42px;
+  padding-bottom: 80px;
+}
+.appShell .feedHeading { display: flex; height: auto; min-height: 0; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 32px; border: 0; background: transparent; position: static; z-index: auto; backdrop-filter: none; }
+.feedHeading p { margin: 0 0 5px; color: #52bde9; font-size: 11px; font-weight: 800; letter-spacing: .18em; }
+.feedHeading h1 { margin: 0 0 5px; color: #f5f8fb; font-size: 39px; line-height: 1.2; }
+.feedHeading span { color: #98adbb; font-size: 14px; }
+.feedFilterArea { position: relative; z-index: 3; }
+.feedFilterButton { display: grid; place-items: center; width: 43px; height: 43px; border: 1px solid #31536a; border-radius: 50%; background: #203241; color: #eaf5fa; cursor: pointer; }
+.feedFilterButton:hover, .feedFilterButton[aria-expanded="true"] { border-color: #32adf0; color: #59c5ff; }
+.feedFilterMenu, .feedMoreMenu { position: absolute; z-index: 4; right: 0; min-width: 174px; padding: 6px; border: 1px solid #284659; border-radius: 12px; background: #0d2434; box-shadow: 0 16px 34px #0007; }
+.feedFilterMenu { top: 52px; max-height: 290px; overflow-y: auto; }
+.feedFilterMenu button, .feedMoreMenu button { display: block; width: 100%; padding: 9px 11px; border: 0; border-radius: 8px; background: transparent; color: #dcebf5; text-align: left; cursor: pointer; }
+.feedFilterMenu button:hover, .feedFilterMenu button.active, .feedMoreMenu button:hover { background: #163c55; color: #58c2f8; }
+.feedSelectedFilter { display: flex; align-items: center; gap: 12px; margin: -10px 0 20px; color: #a6dfff; font-size: 13px; }
+.feedSelectedFilter button { border: 0; background: transparent; color: #8aa9bd; cursor: pointer; }
+.feedTimeline { max-width: 980px; }
+.feedEntry { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; padding: 30px 0 34px; border-bottom: 1px solid #1c3747; }
+.feedEntry:first-child { padding-top: 4px; }
+.feedEntryIcon { padding-top: 3px; font-size: 34px; line-height: 1; }
+.feedEntryContent { min-width: 0; }
+.feedEntryTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.feedEntryTop > div:first-child { min-width: 0; }
+.feedCategory { display: inline-block; margin: 0 0 6px; color: #54bce9; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.feedEntry h2 { margin: 0; color: #f5f8fb; font-size: 21px; line-height: 1.4; font-weight: 700; overflow-wrap: anywhere; }
+.feedKicker { margin: 5px 0 0; color: #aabfcc; font-size: 14px; }
+.feedEntryTools { position: relative; display: flex; flex: 0 0 auto; align-items: center; gap: 13px; padding-top: 4px; color: #8799a5; }
+.feedEntryTools time { font-size: 12px; white-space: nowrap; }
+.feedMore { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: #8b9daa; cursor: pointer; }
+.feedMore:hover { background: #1d394b; color: #fff; }
+.feedMoreMenu { top: 34px; }
+.feedBody { margin-top: 10px; color: #d5e2e9; font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }
+.feedBody .articleBody { margin: 0; font-size: inherit; line-height: inherit; color: inherit; }
+.feedBody .articleBody > :first-child { margin-top: 0; }
+.feedBody .articleBody > :last-child { margin-bottom: 0; }
+.feedBody .articleBody p { margin: 0 0 12px; }
+.feedBody .articleBody a { color: #43aef6; text-decoration: none; }
+.feedBody .articleBody a:hover { text-decoration: underline; }
+.feedBody .articleBody img { display: block; width: auto; max-width: min(100%, 560px); max-height: 420px; margin: 14px 0 3px; border: 1px solid #294659; border-radius: 13px; object-fit: contain; }
+.feedBody .articleBody p:has(> img[title="row"]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+.feedBody .articleBody img[title="row"] {
+  display: inline-block;
+  box-sizing: border-box;
+  width: calc(50% - 6px);
+  max-width: calc(50% - 6px);
+  aspect-ratio: 3 / 2;
+  height: auto;
+  margin: 7px 0;
+  background: #0b2231;
+  object-fit: contain;
+  vertical-align: top;
+}
+.feedBody .articleBody pre { max-width: 100%; overflow-x: auto; }
+.feedActions { display: flex; align-items: center; gap: 20px; margin-top: 17px; }
+.feedActions button { display: inline-flex; align-items: center; gap: 7px; padding: 4px 0; border: 0; background: transparent; color: #a8c0ce; font-size: 13px; cursor: pointer; }
+.feedActions button:hover, .feedActions button.liked { color: #ff8096; }
+.feedActionNotice { color: #6bcca5; font-size: 12px; }
+.feedDiscussion { margin-top: 20px; padding: 16px; border: 1px solid #2a4e61; border-radius: 13px; background: #092131; }
+.feedComment { padding: 10px 0; border-bottom: 1px solid #1d3a4b; }
+.feedComment:first-child { padding-top: 0; }
+.feedComment b { color: #ecf8ff; font-size: 13px; }
+.feedComment time { margin-left: 10px; color: #819aab; font-size: 11px; }
+.feedComment p { margin: 5px 0 0; color: #bed3df; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+.feedNoComments { margin: 0 0 14px; color: #8ea8b9; font-size: 13px; }
+.feedDiscussion textarea { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #36586b; border-radius: 9px; outline: none; background: #071b29; color: #edf7ff; font: inherit; font-size: 14px; resize: vertical; }
+.feedDiscussion textarea:focus { border-color: #4fbef6; }
+.feedEntry { scroll-margin-top: 88px; }
+.feedEntry.isTarget { margin: 0 -14px; border: 1px solid rgba(62,196,244,.72); border-radius: 12px; background: linear-gradient(135deg, rgba(20,93,128,.2), rgba(6,28,43,.15)); box-shadow: 0 0 0 5px rgba(42,183,235,.08); padding: 28px 14px 32px; }
+.feedEntry.isTarget:first-child { padding-top: 28px; }
+.appShell.lightsOn .feedEntry.isTarget { border-color: #68c5e8; background: linear-gradient(135deg, #f1fbff, #fff); box-shadow: 0 0 0 5px rgba(67,181,225,.12); }
+.feedDiscussionFoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; color: #94b6c8; font-size: 12px; }
+.feedDiscussionFoot button, .feedLoadMore { padding: 9px 15px; border: 1px solid #2985bb; border-radius: 9px; background: #0a70a9; color: white; font: inherit; cursor: pointer; }
+.feedDiscussionFoot button:disabled, .feedLoadMore:disabled { opacity: .5; cursor: not-allowed; }
+.feedState { padding: 48px 0; color: #8faebe; text-align: center; }
+.feedLoadMore { display: block; margin: 28px auto 0; background: #103a55; }
+.appShell.lightsOn .feedHeading h1, .appShell.lightsOn .feedEntry h2 { color: #17364a; }
+.appShell.lightsOn .feedEntry { border-color: #d4e5ee; }
+.appShell.lightsOn .feedBody { color: #38566b; }
+.appShell.lightsOn .feedBody .articleBody img[title="row"] { background: #eef5f9; }
+.appShell.lightsOn .feedKicker { color: #5f7b8d; }
+.appShell.lightsOn .feedFilterButton { background: #fff; color: #325974; }
+.appShell.lightsOn .feedFilterMenu, .appShell.lightsOn .feedMoreMenu { background: #fff; border-color: #d0e3ed; }
+.appShell.lightsOn .feedFilterMenu button, .appShell.lightsOn .feedMoreMenu button { color: #38566b; }
+.appShell.lightsOn .feedDiscussion { background: #f1f7fa; border-color: #d0e3ed; }
+.appShell.lightsOn .feedComment b { color: #24475b; }
+.appShell.lightsOn .feedComment p { color: #38566b; }
+.appShell.lightsOn .feedDiscussion textarea { background: #fff; color: #24475b; }
+
+@media (max-width: 767px) {
+  .appShell .feedPage { padding-top: 24px; padding-bottom: 48px; }
+  .feedHeading { margin-bottom: 20px; }
+  .feedHeading h1 { font-size: 30px; }
+  .feedHeading span { font-size: 12px; }
+  .feedFilterButton { width: 40px; height: 40px; }
+  .feedEntry { grid-template-columns: 34px minmax(0, 1fr); gap: 8px; padding: 23px 0 26px; }
+  .feedEntry.isTarget { margin: 0 -8px; padding: 21px 8px 24px; }
+  .feedEntryIcon { font-size: 24px; }
+  .feedEntryTop { gap: 7px; }
+  .feedEntry h2 { font-size: 17px; }
+  .feedEntryTools { gap: 3px; }
+  .feedEntryTools time { font-size: 11px; }
+  .feedBody { font-size: 14px; line-height: 1.7; }
+  .feedBody .articleBody img { max-height: 280px; }
+  .feedDiscussion { padding: 12px; }
+}
+
+/* Match the light directory and modal patterns used by other studio managers. */
+.feedStudio { display: grid; gap: 18px; }
+.feedStudio .studioHeading { margin-bottom: 2px; }
+.feedStudioHeadingActions { display: flex; gap: 9px; }
+.feedStudioHeadingActions button { display: inline-flex; align-items: center; gap: 6px; }
+.feedStudioError { margin: 0; padding: 11px 14px; border: 1px solid #efb5b5; border-radius: 9px; background: #fff2f2; color: #a72530; }
+.feedStudioEmpty { margin: 0; padding: 30px 18px; color: #71869a; text-align: center; }
+.feedStudioRows>article { grid-template-columns: minmax(0,1fr) auto; }
+.feedStudioRows .adminListActions { min-width: 0; }
+.feedStudioRows .adminListActions button:disabled { opacity: .42; cursor: not-allowed; }
+.feedStudioRows .adminListActions button.dangerIcon { color: #bd505b; }
+.feedStudioRows .adminListPrimary>span { max-width: 750px; }
+.feedStudioDirectory>.adminListFooter { border-top: 1px solid #e8eef2; }
+.feedStudioSectionTitle { display: flex; align-items: baseline; gap: 10px; margin-top: 10px; }
+.feedStudioSectionTitle h2 { margin: 0; color: #213e53; font-size: 18px; }
+.feedStudioSectionTitle span { color: #7890a1; font-size: 12px; }
+.feedStudioModal { width: min(100%, 720px); max-height: calc(100vh - 36px); display: flex; flex-direction: column; overflow: hidden; }
+.feedStudioModal>header { flex: 0 0 auto; }
+.feedStudioModal .modalBody { min-height: 0; overflow-y: auto; }
+.feedStudioModalBody .studioFormField:first-child { margin-top: 0; }
+.feedStudioModalBody .studioFormField { color: #39566a; font-size: 13px; font-weight: 700; }
+.feedStudioModalBody .studioFormField input,.feedStudioModalBody .studioFormField textarea { border-color: #cbdbe5; border-radius: 8px; background: #fff; color: #203e53; font-size: 14px; }
+.feedStudioModalBody textarea { min-height: 230px; resize: vertical; font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+.feedStudioEditorRow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; margin-top: 15px; }
+.feedStudioModalBody .feedStudioEditorRow > .studioFormField { min-width: 0; margin-top: 0; }
+.feedStudioModalBody .feedStudioEditorRow input { height: 50px; }
+@media (max-width: 767px) {
+  .feedStudioHeadingActions { flex-wrap: wrap; }
+  .feedStudioRows>article { grid-template-columns: minmax(0,1fr); }
+  .feedStudioRows .adminListActions { grid-column: 1; flex-wrap: wrap; justify-content: flex-start; }
+  .feedStudioRows .adminListActions time { order: 3; }
+  .feedStudioEditorRow { grid-template-columns: 1fr; }
+}
+
+/* Homepage updates should be compact media entries, not a second hero area. */
+.homeFeedGrid { gap: 12px; }
+.homeFeedCard { display: grid; grid-template-columns: 39% minmax(0, 1fr); min-height: 166px; border-radius: 9px; }
+.homeFeedCard .homeFeedImage { min-height: 0; height: auto; }
+.homeFeedCard .homeFeedCopy { min-height: 0; padding: 15px 16px 13px; }
+.homeFeedCard .homeFeedCopy b { font-size: 15px; line-height: 1.4; }
+.homeFeedCard .homeFeedCopy p { margin-top: 6px; }
+.homeFeedCard .homeFeedCopy strong { margin-top: auto; }
+@media (max-width: 767px) {
+  .homeFeedGrid { gap: 10px; }
+  .homeFeedCard { grid-template-columns: 132px minmax(0, 1fr); min-height: 128px; }
+  .homeFeedCard .homeFeedImage { min-height: 0; }
+  .homeFeedCard .homeFeedCopy { padding: 12px 13px 11px; }
+  .homeFeedCard .homeFeedCopy b { font-size: 14px; }
+  .homeFeedCard .homeFeedCopy p { display: none; }
+}

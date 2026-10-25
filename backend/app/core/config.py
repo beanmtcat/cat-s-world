@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     database_url: str
     redis_url: str
     redis_key_prefix: str = "mmcat"
+    feed_posts_token_hash: SecretStr | None = None
     trusted_hosts: list[str] = Field(default_factory=list)
     cors_origins: list[str] = Field(default_factory=list)
     # `__Host-` cookies are intentionally rejected by browsers unless Secure

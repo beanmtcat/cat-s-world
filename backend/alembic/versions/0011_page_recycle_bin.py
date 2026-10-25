@@ -6,6 +6,7 @@ Create Date: 2026-10-01
 """
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "0011_page_recycle_bin"
@@ -15,7 +16,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("mmcat_pages", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True))
+    columns = {item["name"] for item in sa.inspect(op.get_bind()).get_columns("mmcat_pages")}
+    if "deleted_at" not in columns:
+        op.add_column(
+            "mmcat_pages", sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True)
+        )
 
 
 def downgrade() -> None:

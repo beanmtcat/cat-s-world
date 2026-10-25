@@ -81,7 +81,8 @@ class StudioTaxonomyInput(ApiModel):
 
 class StudioPageInput(ApiModel):
     title: str = Field(min_length=1, max_length=300)
-    slug: str = Field(min_length=1, max_length=180, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    # Halo 导入的独立页可能使用 disclaimer.html 等旧地址，保存时须保留原链接。
+    slug: str = Field(min_length=1, max_length=180, pattern=r"^[a-z0-9][a-z0-9-]*(?:\.html)?$")
     content: str = Field(min_length=1, max_length=2_000_000)
     content_format: Literal["markdown", "html"] = "markdown"
     summary: str | None = Field(default=None, max_length=500)
@@ -180,6 +181,22 @@ class StudioGalleryInput(ApiModel):
     @classmethod
     def validate_cover_url(cls, value: str | None) -> str | None:
         return clean_web_url(value)
+
+
+class StudioMediaGroupInput(ApiModel):
+    name: str = Field(min_length=1, max_length=240)
+
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("分组名称不能为空。")
+        return value
+
+
+class StudioMediaGroupMembers(ApiModel):
+    media_ids: list[UUID] = Field(min_length=1, max_length=120)
 
 
 class StudioUserUpdate(ApiModel):

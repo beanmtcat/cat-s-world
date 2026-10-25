@@ -8,6 +8,8 @@ frontend/*
 !frontend/index.webp
 !frontend/vite.config.js
 !frontend/nginx.conf
+!frontend/public/
+!frontend/public/**
 !frontend/src/
 !frontend/src/**
 ._*

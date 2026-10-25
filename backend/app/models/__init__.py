@@ -12,6 +12,8 @@ from app.models.core import (
     User,
     UserSession,
 )
+from app.models.feed import FeedComment, FeedLike, FeedPost
+from app.models.media_thumbnail import MediaThumbnail
 from app.models.supplemental import (
     AITool,
     EmailVerificationToken,
@@ -38,7 +40,11 @@ from app.models.supplemental import (
 )
 
 __all__ = [
+    "MediaThumbnail",
     "AuditLog",
+    "FeedPost",
+    "FeedLike",
+    "FeedComment",
     "Category",
     "Comment",
     "ContentRevision",

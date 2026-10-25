@@ -16,10 +16,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "mmcat_comments",
-        sa.Column("legacy_reply_count", sa.Integer(), nullable=False, server_default="0"),
-    )
+    columns = {item["name"] for item in sa.inspect(op.get_bind()).get_columns("mmcat_comments")}
+    if "legacy_reply_count" not in columns:
+        op.add_column(
+            "mmcat_comments",
+            sa.Column("legacy_reply_count", sa.Integer(), nullable=False, server_default="0"),
+        )
 
 
 def downgrade() -> None:

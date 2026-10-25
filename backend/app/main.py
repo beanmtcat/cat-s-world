@@ -12,6 +12,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
+from app.api.v1.feed import push_router
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.errors import AppError
@@ -124,3 +125,4 @@ async def unknown_error_handler(request: Request, exc: Exception) -> JSONRespons
 
 
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(push_router, prefix="/api")

@@ -1,0 +1,41 @@
+{
+  "specVersion": "1.0",
+  "entries": [
+    {
+      "@context": "https://agenticresourcediscovery.org/context/v1",
+      "identifier": "urn:air:hzcat.net:blog:articles-rss",
+      "displayName": "猫子的世界 · 技术文章 RSS",
+      "type": "application/rss+xml",
+      "url": "https://www.hzcat.net/api/v1/rss.xml",
+      "description": "猫子的世界最新技术文章的 RSS 订阅源，内容涵盖用 AI 解决 Linux、网络、容器、数据库、安全与开发中的实际问题。",
+      "tags": [
+        "AI",
+        "Linux",
+        "运维",
+        "网络",
+        "Docker",
+        "数据库",
+        "安全",
+        "开发"
+      ],
+      "representativeQueries": [
+        "如何用 AI 排查 Linux 服务器故障",
+        "Ubuntu 扩容 LVM 存储的步骤",
+        "Redis 漏洞复现与修复建议",
+        "在国内服务器上部署开源 AI 工具"
+      ]
+    },
+    {
+      "@context": "https://agenticresourcediscovery.org/context/v1",
+      "identifier": "urn:air:hzcat.net:blog:llms-txt",
+      "displayName": "猫子的世界 · llms.txt 站点指南",
+      "type": "text/markdown",
+      "url": "https://www.hzcat.net/llms.txt",
+      "description": "面向大语言模型的站点说明：栏目结构、主要页面与机器可读的内容入口。",
+      "representativeQueries": [
+        "猫子的世界网站有哪些栏目",
+        "在哪里可以订阅猫子的世界的文章更新"
+      ]
+    }
+  ]
+}

@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.db.session import get_session
 from app.models.core import Category, Comment, Page, Post, SiteProperties, Tag, User, UserSession
+from app.models.feed import FeedPost
 from app.models.supplemental import (
     AITool,
     FriendLink,
@@ -30,6 +31,7 @@ from app.models.supplemental import (
 from app.schemas.content import CommentCreate, CommentPublic, PostDetail, PostSummary, SitePublic
 from app.services.analytics import record_post_view
 from app.services.content import PostService, post_view_counts
+from app.services.images import first_markdown_image, thumbnail_urls
 from app.services.rate_limit import enforce_rate_limit
 from app.services.redirects import resolve_redirect
 from app.services.rss import build_rss_feed
@@ -66,6 +68,11 @@ def _post_summary(post: Post, excerpt_source: str) -> dict[str, object]:
     return payload
 
 
+def _feed_image_url(markdown: str) -> str | None:
+    """Return the first remote Markdown image for a compact homepage card."""
+    return first_markdown_image(markdown)
+
+
 async def _post_card_payloads(
     session: AsyncSession, rows: list[tuple[Post, str]]
 ) -> list[dict[str, object]]:
@@ -73,6 +80,7 @@ async def _post_card_payloads(
     if not rows:
         return []
     posts = [post for post, _ in rows]
+    thumbnails = await thumbnail_urls(session, [post.cover_url for post in posts])
     post_ids = [post.id for post in posts]
     categories: dict[UUID, list[str]] = {post_id: [] for post_id in post_ids}
     tags: dict[UUID, list[str]] = {post_id: [] for post_id in post_ids}
@@ -107,6 +115,7 @@ async def _post_card_payloads(
         payload.update(
             {
                 "categories": categories[post.id],
+                "thumbnailUrl": thumbnails.get(post.cover_url),
                 "tags": tags[post.id],
                 "commentCount": comments[post.id],
                 "viewCount": views.get((post.slug, post.locale), 0),
@@ -185,6 +194,15 @@ async def get_home(
 ) -> dict[str, object]:
     """首页聚合数据；只公开已发布内容与安全的状态展示字段。"""
     posts, total = await PostService.list_public(session, locale, 1, 6, None)
+    feed_posts = await session.scalars(
+        select(FeedPost)
+        .where(FeedPost.isvalid.is_(True), FeedPost.published_at <= datetime.now(UTC))
+        .order_by(FeedPost.published_at.desc(), FeedPost.id.desc())
+        .limit(3)
+    )
+    feed_posts = list(feed_posts)
+    feed_images = {item.id: _feed_image_url(item.body_md) for item in feed_posts}
+    feed_thumbnails = await thumbnail_urls(session, feed_images.values())
     category_rows = (
         await session.execute(
             select(Category, func.count(PostCategory.post_id).label("post_count"))
@@ -238,6 +256,18 @@ async def get_home(
             "postCount": total,
             "siteViewCount": site_view_count,
             "posts": await _post_card_payloads(session, posts),
+            "feedPosts": [
+                {
+                    "id": str(item.id),
+                    "title": item.title,
+                    "kicker": item.kicker,
+                    "category": item.category,
+                    "imageUrl": feed_images[item.id],
+                    "thumbnailUrl": feed_thumbnails.get(feed_images[item.id]),
+                    "publishedAt": item.published_at,
+                }
+                for item in feed_posts
+            ],
             "categories": [
                 {"id": str(item.id), "name": item.name, "slug": item.slug, "postCount": count}
                 for item, count in category_rows
@@ -433,9 +463,11 @@ async def list_public_galleries(
         .group_by(Gallery.id)
         .order_by(Gallery.sort_order, Gallery.ctime.desc())
     )
+    rows = list(rows)
+    thumbnails = await thumbnail_urls(session, [item.cover_url for item, _ in rows])
     return {"data": [
         {"id": str(item.id), "slug": item.slug, "name": item.name, "description": item.description,
-         "coverUrl": item.cover_url, "itemCount": count}
+         "coverUrl": item.cover_url, "thumbnailUrl": thumbnails.get(item.cover_url), "itemCount": count}
         for item, count in rows
     ], "meta": _meta(request)}
 
@@ -477,11 +509,14 @@ async def get_public_gallery(
             GalleryItem.id.desc(),
         ).offset((page - 1) * page_size).limit(page_size)
     )
+    items = list(items)
+    thumbnails = await thumbnail_urls(session, [media.source_url for media, _ in items])
     total_count = int(total or 0)
     return {"data": {
         "id": str(gallery.id), "slug": gallery.slug, "name": gallery.name, "description": gallery.description,
         "coverUrl": gallery.cover_url,
         "items": [{"id": str(media.id), "url": media.source_url, "mimeType": media.mime_type,
+                   "thumbnailUrl": thumbnails.get(media.source_url),
                    "name": media.original_name, "alt": item.alt_text or media.original_name,
                    "title": item.title, "description": item.description}
                   for media, item in items],

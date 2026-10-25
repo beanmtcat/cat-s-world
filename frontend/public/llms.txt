@@ -1,0 +1,32 @@
+# 猫子的世界
+
+> 猫子的技术博客：记录用 AI 解决 Linux、网络、运维、开发等实际问题的过程、思路和经验。内容为中文，偏重可复现的操作步骤与故障排查记录。
+
+网站页面由前端脚本渲染。需要读取正文时，优先使用下方的 RSS 订阅源，它包含文章标题、摘要和链接。
+
+## 机器可读入口
+
+- [文章 RSS 订阅源](https://www.hzcat.net/api/v1/rss.xml): 最新文章的标题、摘要、发布时间与链接
+- [ARD 资源清单](https://www.hzcat.net/.well-known/ard.json): 面向 AI 智能体的资源发现清单
+
+## 主要栏目
+
+- [全部文章](https://www.hzcat.net/posts): 按时间排列的文章列表，支持关键词搜索
+- [AI Lab](https://www.hzcat.net/categories/ailab): AI 工具与模型的实践记录
+- [AI 解决方案](https://www.hzcat.net/categories/ai): 用 AI 解决具体技术问题的完整过程
+- [故障档案](https://www.hzcat.net/categories/fault): 线上故障的排查与复盘
+- [实验室](https://www.hzcat.net/categories/lab): 实验性项目与测试
+- [Linux](https://www.hzcat.net/categories/linux): Linux 系统管理与运维
+- [网络](https://www.hzcat.net/categories/network): 网络配置、代理与排障
+- [容器 & 云](https://www.hzcat.net/categories/docker): Docker 与云服务部署
+- [数据库](https://www.hzcat.net/categories/dba): 数据库运维与优化
+- [安全](https://www.hzcat.net/categories/safety): 漏洞复现与安全加固
+- [开发](https://www.hzcat.net/categories/dev): 开发实践与工具
+- [动态](https://www.hzcat.net/feed): AI 行业与技术短讯
+
+## Optional
+
+- [AI 工具](https://www.hzcat.net/tools): 常用 AI 产品导航
+- [标签](https://www.hzcat.net/tags): 按主题浏览文章
+- [关于](https://www.hzcat.net/about): 关于本站
+- [友情链接](https://www.hzcat.net/links)
