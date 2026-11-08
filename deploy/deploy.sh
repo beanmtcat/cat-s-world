@@ -105,7 +105,7 @@ fi
 echo "Packaging $target locally..."
 (
   cd "$project_dir"
-  COPYFILE_DISABLE=1 tar -czf "$archive_path" \
+  COPYFILE_DISABLE=1 tar --no-xattrs -czf "$archive_path" \
     --exclude='backend/.env*' \
     --exclude='backend/.venv' \
     --exclude='backend/__pycache__' \
@@ -178,18 +178,19 @@ case "$target" in
     echo "Production configuration uploaded; no containers were started."
     ;;
   frontend)
-    "${compose[@]}" build --pull mmcat-frontend
+    docker build --pull --network=host -t mmcat-frontend:latest -f frontend/Dockerfile .
     "${compose[@]}" up -d --no-deps --force-recreate mmcat-frontend
     "${compose[@]}" logs --tail=50 mmcat-frontend
     ;;
   api)
-    "${compose[@]}" build --pull mmcat-api
+    docker build --pull --network=host -t mmcat-api:latest ./backend
     "${compose[@]}" up -d --no-deps --force-recreate mmcat-api
     "${compose[@]}" logs --tail=50 mmcat-api
     ;;
   all)
-    "${compose[@]}" build --pull mmcat-api mmcat-frontend
-    "${compose[@]}" up -d mmcat-api mmcat-frontend
+    docker build --pull --network=host -t mmcat-api:latest ./backend
+    docker build --pull --network=host -t mmcat-frontend:latest -f frontend/Dockerfile .
+    "${compose[@]}" up -d --force-recreate mmcat-api mmcat-frontend
     "${compose[@]}" logs --tail=50 mmcat-api mmcat-frontend
     ;;
 esac
