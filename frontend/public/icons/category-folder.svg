@@ -1,1 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="#33c5ef" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="fd-fill" x1="7" y1="10" x2="41" y2="39" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="fd-stroke" x1="7" y1="10" x2="41" y2="39" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="55%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <path d="M7 14C7 11.5 9 9.5 11.5 9.5H19.2C20.6 9.5 21.9 10.2 22.7 11.3L25.2 14.8H36.5C39 14.8 41 16.8 41 19.3V34.5C41 37 39 39 36.5 39H11.5C9 39 7 37 7 34.5V14Z" fill="url(#fd-fill)" stroke="url(#fd-stroke)" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M13 24.5H35" stroke="url(#fd-stroke)" stroke-width="2" stroke-linecap="round" stroke-opacity="0.55"/>
+</svg>

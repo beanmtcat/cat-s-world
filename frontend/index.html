@@ -4,20 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#061b2a" />
-    <link
-      rel="preload"
-      as="image"
-      href="/src/assets/hero-workspace-mobile.webp"
-      media="(max-width: 767px)"
-      fetchpriority="high"
-    />
-    <link
-      rel="preload"
-      as="image"
-      href="/src/assets/hero-workspace.webp"
-      media="(min-width: 768px)"
-      fetchpriority="high"
-    />
+    <!--
+      Hero image candidates for each theme. Browsers ignore this unknown rel, so
+      nothing is downloaded here; /theme-boot.js reads the remembered theme and
+      preloads only the matching pair (Vite still rewrites these hrefs to hashed URLs).
+    -->
+    <link rel="mmcat-hero" data-theme="dark" href="/src/assets/hero-workspace-mobile.webp" media="(max-width: 767px)" />
+    <link rel="mmcat-hero" data-theme="dark" href="/src/assets/hero-workspace.webp" media="(min-width: 768px)" />
+    <link rel="mmcat-hero" data-theme="light" href="/src/assets/hero-light-same-cat-daylight-mobile.webp" media="(max-width: 767px)" />
+    <link rel="mmcat-hero" data-theme="light" href="/src/assets/hero-light-same-cat-daylight.webp" media="(min-width: 768px)" />
+    <script src="/theme-boot.js"></script>
     <title>猫子的世界</title>
     <link rel="alternate" type="application/rss+xml" title="猫子的世界" href="/api/v1/rss.xml" />
     <link rel="ard" href="/.well-known/ard.json" />

@@ -1,1 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="#6d89ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M4 6a8 3 0 1 0 16 0A8 3 0 1 0 4 6"/><path d="M4 6v6a8 3 0 0 0 16 0V6"/><path d="M4 12v6a8 3 0 0 0 16 0v-6"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="db-top" x1="10" y1="6" x2="38" y2="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.2"/>
+    </linearGradient>
+    <linearGradient id="db-body" x1="10" y1="10" x2="38" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="db-stroke" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="50%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#4338ca"/>
+    </linearGradient>
+  </defs>
+  <!-- Cylinder body fill -->
+  <path d="M9 12V36C9 39.6 15.7 42.5 24 42.5C32.3 42.5 39 39.6 39 36V12" fill="url(#db-body)"/>
+  <!-- Top disc -->
+  <ellipse cx="24" cy="12" rx="15" ry="5.5" fill="url(#db-top)" stroke="url(#db-stroke)" stroke-width="2.4"/>
+  <!-- Middle tier -->
+  <path d="M9 12V24C9 27.6 15.7 30.5 24 30.5C32.3 30.5 39 27.6 39 24V12" stroke="url(#db-stroke)" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- Bottom tier -->
+  <path d="M9 24V36C9 39.6 15.7 42.5 24 42.5C32.3 42.5 39 39.6 39 36V24" stroke="url(#db-stroke)" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- Active status indicators -->
+  <circle cx="31.5" cy="23.2" r="1.7" fill="#38bdf8"/>
+  <circle cx="31.5" cy="35.2" r="1.7" fill="#34d399"/>
+  <path d="M15 22.8H23M15 34.8H23" stroke="url(#db-stroke)" stroke-width="2" stroke-linecap="round" stroke-opacity="0.65"/>
+</svg>

@@ -1,1 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="#5ce9b8" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.46 20.846A12 12 0 0 1 3.5 6A12 12 0 0 0 12 3a12 12 0 0 0 8.5 3a12 12 0 0 1-.09 7.06M15 19l2 2l4-4"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="sec-fill" x1="10" y1="6" x2="38" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#059669" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="sec-stroke" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="50%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="sec-check" x1="17" y1="18" x2="32" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+  </defs>
+  <!-- Shield outer shell -->
+  <path d="M24 5.5L39 11.2V22.8C39 32.4 32.6 39.8 24 42.8C15.4 39.8 9 32.4 9 22.8V11.2L24 5.5Z" fill="url(#sec-fill)" stroke="url(#sec-stroke)" stroke-width="2.4" stroke-linejoin="round"/>
+  <!-- Inner shield facet -->
+  <path d="M24 10L34.5 14V22.4C34.5 29.4 29.9 35 24 37.5V10Z" fill="#10b981" fill-opacity="0.14"/>
+  <!-- Verification checkmark -->
+  <path d="M17.5 24.2L22.2 28.8L31.2 19.2" stroke="url(#sec-check)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M17.5 24.2L22.2 28.8L31.2 19.2" stroke="#6ee7b7" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.6"/>
+</svg>

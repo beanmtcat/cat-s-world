@@ -1,1 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1.39em" height="1em" viewBox="0 0 256 185"><path fill="#2396ed" d="M250.716 70.497c-5.765-4-18.976-5.5-29.304-3.5c-1.2-10-6.725-18.749-16.333-26.499l-5.524-4l-3.844 5.75c-4.803 7.5-7.205 18-6.485 28c.24 3.499 1.441 9.749 5.044 15.249c-3.362 2-10.328 4.5-19.455 4.5H1.155l-.48 2c-1.682 9.999-1.682 41.248 18.014 65.247c14.892 18.249 36.99 27.499 66.053 27.499c62.93 0 109.528-30.25 131.386-84.997c8.647.25 27.142 0 36.51-18.75c.24-.5.72-1.5 2.401-5.249l.961-2zM139.986 0h-26.42v24.999h26.42zm0 29.999h-26.42v24.999h26.42zm-31.225 0h-26.42v24.999h26.42zm-31.225 0H51.115v24.999h26.421zM46.311 59.998H19.89v24.999h26.42zm31.225 0H51.115v24.999h26.421zm31.225 0h-26.42v24.999h26.42zm31.226 0h-26.422v24.999h26.422zm31.225 0H144.79v24.999h26.422z"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="ct-whale" x1="6" y1="20" x2="42" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="45%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="ct-box1" x1="10" y1="10" x2="28" y2="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="ct-box2" x1="16" y1="8" x2="34" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <!-- Top row container blocks -->
+  <rect x="17.5" y="12.5" width="5.5" height="5" rx="1.2" fill="url(#ct-box2)"/>
+  <rect x="24.2" y="12.5" width="5.5" height="5" rx="1.2" fill="url(#ct-box1)"/>
+  <rect x="24.2" y="6.3" width="5.5" height="5" rx="1.2" fill="url(#ct-box2)"/>
+  <!-- Bottom row container blocks -->
+  <rect x="10.8" y="18.7" width="5.5" height="5" rx="1.2" fill="url(#ct-box1)"/>
+  <rect x="17.5" y="18.7" width="5.5" height="5" rx="1.2" fill="url(#ct-box1)"/>
+  <rect x="24.2" y="18.7" width="5.5" height="5" rx="1.2" fill="url(#ct-box2)"/>
+  <rect x="30.9" y="18.7" width="5.5" height="5" rx="1.2" fill="url(#ct-box1)"/>
+  <!-- Whale body with tail spout -->
+  <path d="M43.8 21.8C42.2 20.7 39.2 20.4 37.1 21C36.6 18.8 35.1 16.9 33 15.6C31.9 17.4 31.5 19.8 32 21.8C32.2 22.8 32.8 24 33.7 25C32.5 25.6 30.5 26 28.1 26H5.8C5.2 29.8 6.2 35.4 10.2 39.2C13.7 42.5 18.8 44 25.1 44C36.8 44 45.2 37.8 49 26.8" fill="none"/>
+  <path d="M44.5 21.5C42.7 20.4 39.9 20.2 37.9 20.8C37.5 18.7 36.2 16.9 34.1 15.4C32.8 17.2 32.4 19.6 32.8 21.8C33 22.8 33.5 23.8 34.3 24.8C33.1 25.4 31.3 25.8 29 25.8H5.8C5.3 29.5 6.4 35.1 10.3 38.8C13.6 41.9 18.5 43.5 24.5 43.5C35.5 43.5 43.7 37.6 47.4 27.1" fill="none"/>
+  <path d="M5.5 25.5H32.2C34.4 25.5 36.2 24.8 37.4 23.8C36.5 22.2 36.2 19.8 37.2 17.5C39.2 18.7 40.5 20.4 41 22.4C42.8 21.8 45 22 46.5 23C45.3 26.2 42.8 27.6 39.8 27.6C36.2 37.4 28.4 42.5 18.2 42.5C11.2 42.5 5.2 38.2 4.5 27.2C4.4 26.2 4.8 25.5 5.5 25.5Z" fill="url(#ct-whale)"/>
+  <!-- Belly wave highlight & eye -->
+  <path d="M9.5 35.5C14 38.2 22.5 38.2 29.5 34" stroke="#bae6fd" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.65"/>
+  <circle cx="13.5" cy="31" r="1.5" fill="#ffffff"/>
+</svg>

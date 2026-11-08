@@ -1,1 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="#ffbc4d" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h1m8-9v1m8 8h1M5.6 5.6l.7.7m12.1-.7l-.7.7M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0-1 3a2 2 0 0 1-4 0a3.5 3.5 0 0 0-1-3m.7 1h4.6"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="bl-fill" x1="12" y1="8" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fde047" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.14"/>
+    </linearGradient>
+    <linearGradient id="bl-stroke" x1="12" y1="6" x2="36" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="55%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <path d="M24 5V8M37.4 10.6L35.2 12.8M43 24H40M10.6 10.6L12.8 12.8M5 24H8" stroke="url(#bl-stroke)" stroke-width="2.3" stroke-linecap="round"/>
+  <path d="M18 32.5C15.2 30.2 13.5 26.8 13.5 23C13.5 17.2 18.2 12.5 24 12.5C29.8 12.5 34.5 17.2 34.5 23C34.5 26.8 32.8 30.2 30 32.5L29 36H19L18 32.5Z" fill="url(#bl-fill)" stroke="url(#bl-stroke)" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M19.5 39.5H28.5M21.5 43H26.5" stroke="url(#bl-stroke)" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M21.5 24L23.5 21L26.5 24" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

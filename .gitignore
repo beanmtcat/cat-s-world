@@ -15,3 +15,4 @@ content/*
 
 data/*
 docker-compose.yml
+.claude/
