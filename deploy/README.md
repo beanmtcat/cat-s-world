@@ -20,3 +20,11 @@
 4. 确认导入成功后运行 `./deploy.sh all` 启动应用。
 
 建库后清空本地 `deploy/.env` 中的 `DB_ADMIN_PASSWORD`，再运行 `./deploy.sh config` 清除服务器上的副本；应用和后续数据导入只使用 `POSTGRES_USER`/`POSTGRES_PASSWORD`。迁移脚本不会清空现有库，也不会复制 MinIO 对象；附件需要另行迁移。Redis 和 MinIO 复用现有服务，不由当前生产 Compose 创建；`.env` 中对应的密码和密钥必须与现有服务一致。发布脚本每次都会重新上传本地 `deploy/.env`，不要只在服务器修改生产配置。
+
+## HTML 与代理压缩
+
+前端 Nginx 对 `/index.html`（包括 `/feed`、`/posts` 等 SPA 路由回退）使用 `gzip off` 和 `Cache-Control: no-store, no-transform`。带哈希的 JS/CSS 仍保持 gzip 和长期缓存。外层 OpenResty/Nginx 代理本项目时，在对应的 `location /` 中也加上 `gzip off;`，避免重新压缩入口 HTML；不要清空传往前端的 `Accept-Encoding`，也不要手动添加或隐藏 `Content-Encoding`，这样前端生成的 JS/CSS gzip 仍可直接透传。
+
+2026-10-31 曾复现某 CDN 节点把非首页的 gzip 数据按文本改写（压缩流内 CR、TAB 等字节被替换），导致手机刷新显示 `ERR_CONTENT_DECODING_FAILED`。这与 CDN 是否开启“内容压缩”是两回事；检查节点的 HTML 精简、文本替换等规则及配置同步情况，并清理旧 HTML 缓存。
+
+使用 `python3 deploy/check_http_encoding.py https://www.hzcat.net` 检查首页、子页面、入口 HTML 和 JS/CSS。排查特定 CDN 节点时加 `--edge-ip <节点 IP>`；脚本只读取页面，检查压缩数据能否解码、HTML 内容及静态资源类型，不会修改服务。需要 Python 3 和 curl。

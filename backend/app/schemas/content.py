@@ -8,6 +8,8 @@ from pydantic import Field, field_validator
 
 from app.schemas.common import ApiModel, clean_web_url
 
+CONTENT_SLUG_PATTERN = r"^[a-z0-9][a-z0-9-]*(?:\.html)?$"
+
 
 class PostSummary(ApiModel):
     id: UUID
@@ -34,7 +36,8 @@ class StudioPostCreate(ApiModel):
     """最小可用的后台草稿写入载荷，正文统一保存为 Markdown。"""
 
     title: str = Field(min_length=1, max_length=300)
-    slug: str = Field(min_length=1, max_length=180, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    # Halo 导入的文章可保留 1737100817235.html 等旧地址。
+    slug: str = Field(min_length=1, max_length=180, pattern=CONTENT_SLUG_PATTERN)
     content: str = Field(min_length=1, max_length=2_000_000)
     summary: str | None = Field(default=None, max_length=1000)
     locale: str = Field(default="zh-CN", pattern="^(zh-CN|en-US)$")
@@ -53,7 +56,7 @@ class StudioPostUpdate(ApiModel):
     """后台文章编辑与发布载荷；未给出的字段保持原值。"""
 
     title: str | None = Field(default=None, min_length=1, max_length=300)
-    slug: str | None = Field(default=None, min_length=1, max_length=180, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    slug: str | None = Field(default=None, min_length=1, max_length=180, pattern=CONTENT_SLUG_PATTERN)
     content: str | None = Field(default=None, min_length=1, max_length=2_000_000)
     summary: str | None = Field(default=None, max_length=1000)
     cover_url: str | None = Field(default=None, max_length=2048)
@@ -82,7 +85,7 @@ class StudioTaxonomyInput(ApiModel):
 class StudioPageInput(ApiModel):
     title: str = Field(min_length=1, max_length=300)
     # Halo 导入的独立页可能使用 disclaimer.html 等旧地址，保存时须保留原链接。
-    slug: str = Field(min_length=1, max_length=180, pattern=r"^[a-z0-9][a-z0-9-]*(?:\.html)?$")
+    slug: str = Field(min_length=1, max_length=180, pattern=CONTENT_SLUG_PATTERN)
     content: str = Field(min_length=1, max_length=2_000_000)
     content_format: Literal["markdown", "html"] = "markdown"
     summary: str | None = Field(default=None, max_length=500)

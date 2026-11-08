@@ -2617,8 +2617,32 @@ function FeedScreen({ lightsOn, onToggle, navigate }) {
   );
 }
 
+const LIGHTS_STORAGE_KEY = 'mmcat-lights-on';
+function readLightsOn() {
+  try {
+    const value = window.localStorage.getItem(LIGHTS_STORAGE_KEY);
+    return value === '1' || value === 'true';
+  } catch {
+    return false;
+  }
+}
+function writeLightsOn(lightsOn) {
+  try {
+    window.localStorage.setItem(LIGHTS_STORAGE_KEY, lightsOn ? '1' : '0');
+  } catch {
+    // Storage may be unavailable (private mode); theme falls back to in-memory state.
+  }
+}
+
 function App() {
-  const [lightsOn, setLightsOn] = useState(false);
+  const [lightsOn, setLightsOn] = useState(readLightsOn);
+  const toggleLights = useCallback(() => {
+    setLightsOn((value) => {
+      const next = !value;
+      writeLightsOn(next);
+      return next;
+    });
+  }, []);
   const [location, setLocation] = useState(() => window.location.pathname + window.location.search);
   const [home, setHome] = useState(null);
   const [homeError, setHomeError] = useState('');
@@ -2635,6 +2659,18 @@ function App() {
     const update = () => setLocation(window.location.pathname + window.location.search);
     window.addEventListener('popstate', update);
     return () => window.removeEventListener('popstate', update);
+  }, []);
+  useEffect(() => {
+    writeLightsOn(lightsOn);
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.content = lightsOn ? '#eef6fb' : '#061b2a';
+  }, [lightsOn]);
+  useEffect(() => {
+    const syncLights = (event) => {
+      if (event.key === LIGHTS_STORAGE_KEY) setLightsOn(readLightsOn());
+    };
+    window.addEventListener('storage', syncLights);
+    return () => window.removeEventListener('storage', syncLights);
   }, []);
   useEffect(() => {
     let active = true;
@@ -2694,29 +2730,29 @@ function App() {
       </React.Suspense>
     );
   if (pathname === '/links')
-    return <FriendLinksScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} />;
-  if (pathname === '/feed') return <FeedScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} />;
-  if (pathname === '/tools') return <ToolsScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} />;
-  if (pathname === '/tags') return <TagsScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} />;
+    return <FriendLinksScreen lightsOn={lightsOn} onToggle={toggleLights} navigate={navigate} />;
+  if (pathname === '/feed') return <FeedScreen lightsOn={lightsOn} onToggle={toggleLights} navigate={navigate} />;
+  if (pathname === '/tools') return <ToolsScreen lightsOn={lightsOn} onToggle={toggleLights} navigate={navigate} />;
+  if (pathname === '/tags') return <TagsScreen lightsOn={lightsOn} onToggle={toggleLights} navigate={navigate} />;
   if (pathname === '/photos')
-    return <GalleriesScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} />;
+    return <GalleriesScreen lightsOn={lightsOn} onToggle={toggleLights} navigate={navigate} />;
   if (pathname.startsWith('/photos/'))
     return (
       <GalleryScreen
         slug={decodeURIComponent(pathname.slice('/photos/'.length))}
         lightsOn={lightsOn}
-        onToggle={() => setLightsOn((value) => !value)}
+        onToggle={toggleLights}
         navigate={navigate}
       />
     );
   if (pathname === '/posts' || pathname.startsWith('/categories/') || pathname.startsWith('/tags/'))
-    return <PostListScreen lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate} site={site} />;
+    return <PostListScreen lightsOn={lightsOn} onToggle={toggleLights} navigate={navigate} site={site} />;
   if (pathname.startsWith('/archives/'))
     return (
       <ArticleScreen
         slug={decodeURIComponent(pathname.slice('/archives/'.length))}
         lightsOn={lightsOn}
-        onToggle={() => setLightsOn((value) => !value)}
+        onToggle={toggleLights}
         navigate={navigate}
       />
     );
@@ -2725,12 +2761,12 @@ function App() {
       <PageScreen
         slug={decodeURIComponent(pathname.slice(1))}
         lightsOn={lightsOn}
-        onToggle={() => setLightsOn((value) => !value)}
+        onToggle={toggleLights}
         navigate={navigate}
       />
     );
   return (
-    <PublicShell lightsOn={lightsOn} onToggle={() => setLightsOn((value) => !value)} navigate={navigate}>
+    <PublicShell lightsOn={lightsOn} onToggle={toggleLights} navigate={navigate}>
       <Hero lightsOn={lightsOn} postCount={home?.postCount} siteViewCount={home?.siteViewCount} navigate={navigate} />
       {homeError && <p className="wrap dynamicError">{homeError}</p>}
       <Main home={home} loading={!home && !homeError} navigate={navigate} />

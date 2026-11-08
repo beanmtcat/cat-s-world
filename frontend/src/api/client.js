@@ -1,3 +1,5 @@
+import { validationMessage } from './validation';
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
 export const rssFeedUrl = `${API_BASE_URL}/rss.xml`;
 const publicLocale = () => window.localStorage.getItem('mmcat-locale') || 'zh-CN';
@@ -43,7 +45,7 @@ function withQuery(path, params = {}) {
 
 export class ApiError extends Error {
   constructor(code, message, status, fields = {}) {
-    super(message);
+    super(code === 'VALIDATION_ERROR' ? validationMessage(fields, message) : message);
     this.code = code;
     this.status = status;
     this.fields = fields;

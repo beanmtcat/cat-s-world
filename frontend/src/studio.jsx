@@ -160,7 +160,7 @@ const slugify = (value) =>
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-const PAGE_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*(?:\.html)?$/;
+const CONTENT_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*(?:\.html)?$/;
 // Page buttons to render: everything when short, otherwise first, last and the neighbours of the current page.
 const pageWindow = (page, totalPages) =>
   totalPages <= 7
@@ -998,7 +998,7 @@ function PostEditorView({ post, categories, tags, saving, onClose, onSave }) {
           </button>
           <button
             className="primaryButton"
-            disabled={saving || !form.title.trim() || !form.slug || !form.content.trim()}
+            disabled={saving || !form.title.trim() || !CONTENT_SLUG_PATTERN.test(form.slug) || !form.content.trim()}
             onClick={() => onSave(form)}
           >
             {saving ? '保存中…' : '保存文章'}
@@ -1047,8 +1047,14 @@ function PostEditorView({ post, categories, tags, saving, onClose, onSave }) {
           )}
         </main>
         <aside className="postSettingsRail">
-          <Field label="文章地址 slug">
-            <input value={form.slug} onChange={(event) => set('slug', slugify(event.target.value))} placeholder="example-post" />
+          <Field label="文章地址 slug" hint="支持 example-post 或旧站的 example-post.html 地址；保留原地址可避免旧链接失效。">
+            <input
+              value={form.slug}
+              onChange={(event) => set('slug', event.target.value.toLowerCase().trim())}
+              maxLength={180}
+              aria-invalid={Boolean(form.slug) && !CONTENT_SLUG_PATTERN.test(form.slug)}
+              placeholder="example-post 或 example-post.html"
+            />
           </Field>
           <Field label="语言">
             <select
@@ -1239,7 +1245,7 @@ function PageEditor({ page, saving, onClose, onSave }) {
           </button>
           <button
             className="primaryButton"
-            disabled={saving || !form.title.trim() || !PAGE_SLUG_PATTERN.test(form.slug) || !form.content.trim()}
+            disabled={saving || !form.title.trim() || !CONTENT_SLUG_PATTERN.test(form.slug) || !form.content.trim()}
             onClick={() => onSave(form)}
           >
             {saving ? '保存中…' : '保存页面'}
@@ -1293,7 +1299,7 @@ function PageEditor({ page, saving, onClose, onSave }) {
               value={form.slug}
               onChange={(event) => set('slug', event.target.value.toLowerCase().trim())}
               maxLength={180}
-              aria-invalid={Boolean(form.slug) && !PAGE_SLUG_PATTERN.test(form.slug)}
+              aria-invalid={Boolean(form.slug) && !CONTENT_SLUG_PATTERN.test(form.slug)}
               placeholder="about 或 about.html"
             />
           </Field>
