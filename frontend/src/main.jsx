@@ -2634,6 +2634,15 @@ function writeLightsOn(lightsOn) {
   }
 }
 
+function normalizeLocation(value) {
+  const input = value || '/';
+  const queryIndex = input.indexOf('?');
+  const rawPathname = queryIndex >= 0 ? input.slice(0, queryIndex) : input;
+  const search = queryIndex >= 0 ? input.slice(queryIndex) : '';
+  const pathname = rawPathname === '/index.html' ? '/' : rawPathname || '/';
+  return pathname + search;
+}
+
 function App() {
   const [lightsOn, setLightsOn] = useState(readLightsOn);
   const toggleLights = useCallback(() => {
@@ -2643,12 +2652,12 @@ function App() {
       return next;
     });
   }, []);
-  const [location, setLocation] = useState(() => window.location.pathname + window.location.search);
+  const [location, setLocation] = useState(() => normalizeLocation(window.location.pathname + window.location.search));
   const [home, setHome] = useState(null);
   const [homeError, setHomeError] = useState('');
   const [site, setSite] = useState(null);
   const navigate = useCallback((to, { replace = false } = {}) => {
-    let target = to || '/';
+    let target = normalizeLocation(to || '/');
     target = target.replace(/^\/posts\?category=([^&]+)$/, '/categories/$1').replace(/^\/posts\?tag=([^&]+)$/, '/tags/$1');
     if (window.location.pathname + window.location.search !== target)
       window.history[replace ? 'replaceState' : 'pushState']({}, '', target);
@@ -2656,7 +2665,12 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
   useEffect(() => {
-    const update = () => setLocation(window.location.pathname + window.location.search);
+    if (window.location.pathname === '/index.html') {
+      window.history.replaceState({}, '', `/${window.location.search}${window.location.hash}`);
+    }
+  }, [location]);
+  useEffect(() => {
+    const update = () => setLocation(normalizeLocation(window.location.pathname + window.location.search));
     window.addEventListener('popstate', update);
     return () => window.removeEventListener('popstate', update);
   }, []);
